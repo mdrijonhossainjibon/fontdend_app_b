@@ -22,17 +22,17 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
     User.countDocuments({ role: 'solver' }),
     User.countDocuments({ isOnline: true, lastActive: { $gte: new Date(Date.now() - 5 * 60 * 1000) } }),
     (async () => {
-      const result = await Package.aggregate([{ $group: { _id: null, total: { $sum: '$price' } } }]);
+      const result = await Deposit.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, total: { $sum: '$amountUSD' } } }]);
       return result[0]?.total || 0;
     })(),
     (async () => {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-      const result = await Package.aggregate([{ $match: { createdAt: { $gte: startOfDay } } }, { $group: { _id: null, total: { $sum: '$price' } } }]);
+      const result = await Deposit.aggregate([{ $match: { status: 'completed', createdAt: { $gte: startOfDay } } }, { $group: { _id: null, total: { $sum: '$amountUSD' } } }]);
       return result[0]?.total || 0;
     })(),
     (async () => {
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
-      const result = await Package.aggregate([{ $match: { createdAt: { $gte: startOfMonth } } }, { $group: { _id: null, total: { $sum: '$price' } } }]);
+      const result = await Deposit.aggregate([{ $match: { status: 'completed', createdAt: { $gte: startOfMonth } } }, { $group: { _id: null, total: { $sum: '$amountUSD' } } }]);
       return result[0]?.total || 0;
     })(),
     Package.countDocuments({ status: 'active' }),
@@ -40,13 +40,13 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
     Activity.find().sort({ createdAt: -1 }).limit(5),
     (async () => {
       const startOfWeek = new Date(); startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); startOfWeek.setHours(0, 0, 0, 0);
-      const sales = await Package.find({ createdAt: { $gte: startOfWeek } }).lean();
+      const deposits = await Deposit.find({ status: 'completed', createdAt: { $gte: startOfWeek } }).lean();
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const weeklyData = days.map((name, index) => {
         const day = new Date(startOfWeek); day.setDate(day.getDate() + index);
         const dayStr = day.toISOString().split('T')[0];
-        const daySales = sales.filter((s: any) => new Date(s.createdAt).toISOString().split('T')[0] === dayStr);
-        return { name, sales: daySales.reduce((sum: number, s: any) => sum + (s.price || 0), 0), orders: daySales.length };
+        const dayDeposits = deposits.filter((d: any) => new Date(d.createdAt).toISOString().split('T')[0] === dayStr);
+        return { name, sales: dayDeposits.reduce((sum: number, d: any) => sum + (d.amountUSD || 0), 0), orders: dayDeposits.length };
       });
       return weeklyData;
     })(),
@@ -77,20 +77,20 @@ export const getRevenueStats = asyncHandler(async (req: Request, res: Response) 
     default: dateFilter = new Date(Date.now() - 7 * 86400000);
   }
 
-  const packages = await Package.find({ createdAt: { $gte: dateFilter } }).sort({ createdAt: -1 }).lean();
+  const deposits = await Deposit.find({ status: 'completed', createdAt: { $gte: dateFilter } }).sort({ createdAt: -1 }).lean();
   const revenueByDay: Record<string, number> = {};
   const revenueByMonth: Record<string, number> = {};
 
-  packages.forEach((p: any) => {
-    const day = new Date(p.createdAt).toISOString().split('T')[0];
-    const month = new Date(p.createdAt).toISOString().slice(0, 7);
-    revenueByDay[day] = (revenueByDay[day] || 0) + (p.price || 0);
-    revenueByMonth[month] = (revenueByMonth[month] || 0) + (p.price || 0);
+  deposits.forEach((d: any) => {
+    const day = new Date(d.createdAt).toISOString().split('T')[0];
+    const month = new Date(d.createdAt).toISOString().slice(0, 7);
+    revenueByDay[day] = (revenueByDay[day] || 0) + (d.amountUSD || 0);
+    revenueByMonth[month] = (revenueByMonth[month] || 0) + (d.amountUSD || 0);
   });
 
   sendSuccess(res, {
-    period, totalRevenue: packages.reduce((sum: number, p: any) => sum + (p.price || 0), 0),
-    totalPackages: packages.length, dailyData: revenueByDay, monthlyData: revenueByMonth,
+    period, totalRevenue: deposits.reduce((sum: number, d: any) => sum + (d.amountUSD || 0), 0),
+    totalDeposits: deposits.length, dailyData: revenueByDay, monthlyData: revenueByMonth,
   });
 });
 
