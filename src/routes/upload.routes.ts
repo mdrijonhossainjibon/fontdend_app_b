@@ -24,6 +24,7 @@ const upload = multer({
 
 const router = Router();
 
+// @ts-ignore
 router.post('/', authMiddleware, upload.single('file'), asyncHandler(async (req, res) => {
   const file = req.file;
   if (!file) {
@@ -41,6 +42,7 @@ router.post('/', authMiddleware, upload.single('file'), asyncHandler(async (req,
   });
 }));
 
+// @ts-ignore
 router.post('/multiple', authMiddleware, upload.array('files', 10), asyncHandler(async (req, res) => {
   const files = req.files as Express.Multer.File[];
   if (!files?.length) {

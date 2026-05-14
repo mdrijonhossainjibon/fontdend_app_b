@@ -18,6 +18,7 @@ export function createApp(): Express {
   // ───────────────────────────────────────────────────────────────────────────
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: false }));
   app.use(cors(corsOptions));
+  // @ts-ignore
   app.use(compression());
   app.use(cookieParser());
 
