@@ -32,12 +32,12 @@ export const approve = asyncHandler(async (req: Request, res: Response) => {
     await User.findByIdAndUpdate(deposit.userId, { $inc: { balance: deposit.amountUSD || deposit.amount } });
   }
 
-  sendSuccess(res, { message: 'Deposit approved and balance updated', deposit });
+  sendSuccess(res, { message: 'Deposit marked as completed and balance updated', deposit });
 });
 
 export const reject = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
   const deposit = await Deposit.findByIdAndUpdate(req.params.id, { $set: { status: 'failed' } }, { new: true });
   if (!deposit) throw new ApiError(404, 'Deposit not found');
-  sendSuccess(res, { message: 'Deposit rejected', deposit });
+  sendSuccess(res, { message: 'Deposit marked as failed', deposit });
 });
