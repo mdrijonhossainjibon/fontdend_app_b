@@ -8,14 +8,16 @@ import { Package } from '@/models/Package';
 import { ApiKey } from '@/models/ApiKey';
 import { Solution } from '@/models/Solution';
 import { Deposit } from '@/models/Deposit';
+import { Extension } from '@/models/Extension';
 
-export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
+export const getDashboardStats = asyncHandler(async (req: any, res: Response) => {
   await connectDB();
 
   const [
     totalUsers, activeUsers, totalSolvers, onlineSessions,
     totalRevenue, todayRevenue, monthlyRevenue, activePackages,
     recentUsers, recentActivities, currentWeekSales,
+    rawExtensions
   ] = await Promise.all([
     User.countDocuments({ role: 'user' }),
     User.countDocuments({ role: 'user', isActive: true }),
@@ -50,7 +52,13 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       });
       return weeklyData;
     })(),
+    Extension.find().sort({ createdAt: -1 }).limit(10).lean()
   ]);
+
+  const extensions = (rawExtensions || []).map((ext: any) => ({
+    ...ext,
+    downloadUrl: `${req.protocol}://${req.get('host')}/api/d/${ext.shortId}`
+  }));
 
   const totalActivities = await Activity.countDocuments();
   const totalApiKeys = await ApiKey.countDocuments();
@@ -62,6 +70,7 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
     packages: { active: activePackages },
     system: { activities: totalActivities, apiKeys: totalApiKeys, deposits: totalDeposits, solutions: await Solution.countDocuments() },
     recentUsers, recentActivities, weeklySales: currentWeekSales,
+    extensions
   });
 });
 

@@ -10,8 +10,18 @@ import { errorHandler } from '@/middlewares/error.middleware';
 import { fingerprintMiddleware } from '@/middlewares/fingerprint.middleware';
 import logger from '@/utils/logger';
 
+import path from 'path';
+
 export function createApp(): Express {
   const app: Express = express();
+  app.set('etag', false); // Disable etag to prevent 304 Not Modified cache
+
+  // Serve static files from public directory
+  const publicPath = path.resolve(process.cwd(), 'public');
+  app.use('/public', express.static(publicPath));
+  // Also allow direct access without /public prefix if preferred, but /public is safer
+  app.use(express.static(publicPath));
+  console.log('Serving static files from:', publicPath);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Security & parsing middleware

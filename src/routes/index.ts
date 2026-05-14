@@ -12,8 +12,32 @@ import webhookRoutes from './webhook.routes';
 import extensionsRoutes from './extensions.routes';
 import topupRoutes from './topup.routes';
 import referralRoutes from './referral.routes';
+import { Extension } from '../models/Extension';
 
 const router = Router();
+
+// Short link redirection
+router.get('/d/:shortId', async (req, res) => {
+    try {
+        const extension = await Extension.findOne({ shortId: req.params.shortId });
+        if (!extension) return res.status(404).send('Extension not found');
+
+        // Increase download count
+        extension.downloads = (extension.downloads || 0) + 1;
+        await extension.save();
+
+        // Redirect to actual download URL
+        // If the URL is relative, prepend the protocol and host
+        let finalUrl = extension.downloadUrl;
+        if (finalUrl.startsWith('/')) {
+            finalUrl = `${req.protocol}://${req.get('host')}${finalUrl}`;
+        }
+        res.redirect(finalUrl);
+    } catch (error) {
+        console.error('Short link error:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);

@@ -33,9 +33,17 @@ const ExtensionSchema: Schema = new Schema(
         iconUrl: { type: String, default: '' },
         downloads: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true },
+        shortId: { type: String, unique: true },
     },
 
     { timestamps: true }
 )
+
+ExtensionSchema.pre('save', function (next) {
+    if (!this.shortId) {
+        this.shortId = Math.random().toString(36).substring(2, 8);
+    }
+    next();
+});
 
 export const Extension = mongoose.models.Extension || mongoose.model<IExtension>('Extension', ExtensionSchema)

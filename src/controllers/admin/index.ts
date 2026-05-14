@@ -2,7 +2,7 @@ export { getDashboardStats, getRevenueStats, getUserAnalytics } from './analytic
 export { list as listUsers, getById as getUserById, update as updateUser, remove as removeUser, toggleActive as toggleUserActive } from './users.controller';
 export { list as listWallets, create as createWallet, update as updateWallet, remove as removeWallet } from './admin-wallets.controller';
 export { list as listDeposits, approve as approveDeposit, reject as rejectDeposit } from './deposits.controller';
-export { list as listExtensions, create as createExtension, update as updateExtension, remove as removeExtension } from './extensions.controller';
+export { list as listExtensions, create as createExtension, update as updateExtension, remove as removeExtension, scan as scanExtension } from './extensions.controller';
 export { list as listPricingPlans, create as createPricingPlan, update as updatePricingPlan, remove as removePricingPlan } from './pricing-plans.controller';
 export { getSiteSettings, updateSiteSettings, getSmtpSettings, updateSmtpSettings } from './settings.controller';
 export { getStats as getDbStats, cleanActivity as cleanDbActivity } from './database.controller';export { list as listDatabaseCollections, validate as validateCollection, repair as repairCollection, deleteIndex as deleteDatabaseIndex } from './database.controller';
