@@ -16,6 +16,7 @@ const upload = multer({
 
 const router = Router();
 
+// @ts-ignore
 router.post('/upload-model', authMiddleware, upload.single('file'), admin.uploadModelToBot);
 
 // All admin routes require auth + admin role
