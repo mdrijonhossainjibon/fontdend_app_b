@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up — CaptchaⱮaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            gold: { 300:'#fde68a', 400:'#fcd535', 500:'#f0b90b', 600:'#d4a00a', 700:'#a67c08' },
+            dark: { 700:'#1a1a24', 800:'#12121a', 900:'#0b0b11', 950:'#070710' }
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
+          keyframes: {
+            slideUp: { from:{ opacity:'0', transform:'translateY(30px)' }, to:{ opacity:'1', transform:'translateY(0)' } },
+            slideRight: { from:{ opacity:'0', transform:'translateX(-30px)' }, to:{ opacity:'1', transform:'translateX(0)' } },
+            float: { '0%,100%':{ transform:'translateY(0)' }, '50%':{ transform:'translateY(-10px)' } },
+            pulseGlow: { '0%,100%':{ boxShadow:'0 0 20px rgba(240,185,11,0.15)' }, '50%':{ boxShadow:'0 0 45px rgba(240,185,11,0.45)' } },
+            shimmer: { '0%':{ backgroundPosition:'-200% 0' }, '100%':{ backgroundPosition:'200% 0' } },
+            blobMove: { '0%,100%':{ transform:'translate(0,0) scale(1)' }, '25%':{ transform:'translate(30px,-50px) scale(1.1)' }, '50%':{ transform:'translate(-20px,20px) scale(0.9)' }, '75%':{ transform:'translate(20px,40px) scale(1.05)' } }
+          },
+          animation: {
+            'slide-up':'slideUp 0.7s cubic-bezier(0.16,1,0.3,1) forwards',
+            'slide-right':'slideRight 0.8s cubic-bezier(0.16,1,0.3,1) forwards',
+            'float':'float 6s ease-in-out infinite',
+            'pulse-glow':'pulseGlow 2.5s ease-in-out infinite',
+            'shimmer':'shimmer 3s linear infinite',
+            'blob':'blobMove 20s ease-in-out infinite'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    ::selection { background:rgba(240,185,11,.3); color:#f0b90b; }
+    ::-webkit-scrollbar { width:5px }
+    ::-webkit-scrollbar-track { background:transparent }
+    ::-webkit-scrollbar-thumb { background:rgba(240,185,11,.2); border-radius:9px }
+
+    .gold-text {
+      background: linear-gradient(135deg, #f0b90b, #fcd535 40%, #fffbe6 55%, #fcd535 70%, #f0b90b);
+      background-size: 200% 200%;
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 4s ease-in-out infinite;
+    }
+
+    .input-wrap:focus-within .focus-ring { opacity: 1; }
+    .focus-ring {
+      position: absolute; inset: -1px; border-radius: 13px; opacity: 0;
+      background: linear-gradient(90deg, transparent, rgba(240,185,11,0.3), rgba(240,185,11,0.5), rgba(240,185,11,0.3), transparent);
+      background-size: 200% 100%;
+      animation: shimmer 2s linear infinite;
+      pointer-events: none; z-index: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .glass-reflect {
+      position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 10;
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.02) 100%);
+    }
+    html:not(.dark) .glass-reflect {
+      background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.2) 100%);
+    }
+
+    input[type="checkbox"] { accent-color: #f0b90b; }
+    #particles { position:absolute; inset:0; pointer-events:none; z-index:0; }
+
+    /* OTP Inputs */
+    .otp-input {
+      width: 52px; height: 60px; text-align: center; font-size: 1.5rem; font-weight: 700;
+      border-radius: 12px;
+      background: rgb(243 244 246); dark:bg-white/5;
+      border: 1.5px solid rgb(229 231 235);
+      color: #111827;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+    html:not(.dark) .otp-input { background: rgb(243 244 246); border-color: rgb(229 231 235); color: #111827; }
+    .dark .otp-input { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: #fff; }
+    .otp-input:focus {
+      border-color: #f0b90b;
+      box-shadow: 0 0 0 3px rgba(240,185,11,0.15), 0 0 20px rgba(240,185,11,0.1);
+    }
+    html:not(.dark) .otp-input:focus { background: #fff; }
+    .dark .otp-input:focus { background: rgba(255,255,255,0.1); }
+
+    /* Step transitions */
+    .step-panel { transition: opacity 0.4s ease, transform 0.4s ease; }
+    .step-hidden { opacity:0; transform:translateY(15px); position:absolute; pointer-events:none; }
+    .step-visible { opacity:1; transform:translateY(0); position:relative; pointer-events:auto; }
+  </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-dark-950 text-gray-900 dark:text-white transition-colors duration-300 min-h-screen flex flex-col lg:flex-row overflow-x-hidden">
+
+<!-- Theme Toggle -->
+<button id="themeBtn" class="fixed top-5 right-5 z-50 w-10 h-10 rounded-xl bg-white/70 dark:bg-white/5 backdrop-blur-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:border-gold-500/40 transition-all shadow-lg shadow-black/5 dark:shadow-none" aria-label="Toggle theme">
+  <svg class="w-5 h-5 text-gray-700 dark:text-gold-400 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+  <svg class="w-5 h-5 text-gold-400 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+</button>
+
+<!-- ====================================================================== -->
+<!-- LEFT PANEL                                                             -->
+<!-- ====================================================================== -->
+<div class="hidden lg:flex w-1/2 relative overflow-hidden bg-gray-900 dark:bg-dark-950 text-white flex-col justify-center p-12 xl:p-20">
+  
+  <div class="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-gold-500/10 blur-[120px] animate-blob pointer-events-none"></div>
+  <div class="absolute -bottom-40 -left-40 w-[400px] h-[400px] rounded-full bg-gold-500/5 blur-[100px] animate-blob pointer-events-none" style="animation-delay:-8s"></div>
+  <canvas id="particles"></canvas>
+
+  <div class="relative z-10 opacity-0 animate-slide-right space-y-10 max-w-lg">
+    
+    <!-- Logo -->
+    <a href="#" class="text-2xl font-extrabold tracking-tight">Captcha<span class="gold-text">Ɱaster</span></a>
+
+    <!-- Headline -->
+    <div>
+      <h1 class="text-4xl xl:text-5xl font-black tracking-tight leading-[1.1]">
+        Start Automating<br>CAPTCHAs <span class="gold-text">Today</span>
+      </h1>
+      <p class="mt-5 text-lg text-gray-400 leading-relaxed">
+        Create your free account and get 1,000 CAPTCHA solves on us. No credit card required. Scale anytime as your needs grow.
+      </p>
+    </div>
+
+    <!-- Feature List — Text Only -->
+    <div class="space-y-4">
+      <div class="flex items-start gap-3">
+        <span class="mt-1 w-1.5 h-1.5 rounded-full bg-gold-500 shrink-0"></span>
+        <div>
+          <p class="font-semibold text-gray-200">AI-Powered Solving</p>
+          <p class="text-sm text-gray-500 mt-0.5">Advanced neural networks trained on millions of CAPTCHA variations</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <span class="mt-1 w-1.5 h-1.5 rounded-full bg-gold-500 shrink-0"></span>
+        <div>
+          <p class="font-semibold text-gray-200">Ultra-Fast API</p>
+          <p class="text-sm text-gray-500 mt-0.5">Average response time under 1 second with global edge nodes</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <span class="mt-1 w-1.5 h-1.5 rounded-full bg-gold-500 shrink-0"></span>
+        <div>
+          <p class="font-semibold text-gray-200">Multi-CAPTCHA Support</p>
+          <p class="text-sm text-gray-500 mt-0.5">reCAPTCHA, hCaptcha, Turnstile, FunCaptcha and more</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3">
+        <span class="mt-1 w-1.5 h-1.5 rounded-full bg-gold-500 shrink-0"></span>
+        <div>
+          <p class="font-semibold text-gray-200">Real-Time Analytics</p>
+          <p class="text-sm text-gray-500 mt-0.5">Monitor solve rates, latency, and usage from a live dashboard</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div>
+      <a href="#" class="group relative inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-dark-950 shadow-lg shadow-gold-500/20 hover:shadow-gold-500/40 hover:-translate-y-0.5 transition-all duration-300">
+        View Documentation
+        <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+        <div class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 animate-pulse-glow transition-opacity duration-300 pointer-events-none"></div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Promo Banner -->
+<div class="lg:hidden w-full bg-gray-900 dark:bg-dark-950 text-white p-8 text-center relative overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-gold-500/10 to-transparent pointer-events-none"></div>
+  <div class="relative z-10">
+    <a href="#" class="text-xl font-extrabold tracking-tight">Captcha<span class="gold-text">Ɱaster</span></a>
+    <h2 class="mt-3 text-xl font-bold">Start Automating <span class="gold-text">Today</span></h2>
+    <p class="mt-1 text-sm text-gray-400">1,000 free solves. No credit card required.</p>
+  </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- RIGHT PANEL — SIGN UP + OTP                                            -->
+<!-- ====================================================================== -->
+<div class="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 py-12 lg:py-0 bg-gray-50 dark:bg-dark-950 min-h-screen relative">
+  
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-gold-500/5 blur-[100px] pointer-events-none"></div>
+
+  <div class="w-full max-w-md opacity-0 animate-slide-up relative z-10">
+    
+    <!-- Card -->
+    <div class="relative rounded-2xl bg-white/80 dark:bg-white/[0.03] backdrop-blur-2xl border border-gray-200 dark:border-white/[0.06] shadow-xl shadow-black/5 dark:shadow-[0_0_80px_rgba(0,0,0,0.4)] p-8 sm:p-10 overflow-hidden">
+      <div class="glass-reflect"></div>
+      
+      <div class="relative z-20">
+
+        <!-- Logo (mobile) -->
+        <div class="flex justify-center mb-6 lg:hidden">
+          <a href="#" class="text-2xl font-extrabold tracking-tight">Captcha<span class="gold-text">Ɱaster</span></a>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="flex items-center justify-center gap-2 mb-6">
+          <div id="dot1" class="w-8 h-1.5 rounded-full bg-gold-500 transition-all duration-500"></div>
+          <div id="dot2" class="w-8 h-1.5 rounded-full bg-gray-200 dark:bg-white/10 transition-all duration-500"></div>
+        </div>
+
+        <!-- Wrapper for step transitions -->
+        <div class="relative">
+
+          <!-- ===== STEP 1: SIGN UP FORM ===== -->
+          <div id="step1" class="step-panel step-visible">
+            <div class="text-center mb-6">
+              <h1 class="text-2xl font-bold tracking-tight">Create Account</h1>
+              <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">Fill in the details to get started</p>
+            </div>
+
+            <form id="signupForm" class="space-y-4" onsubmit="return false;">
+              <!-- Full Name -->
+              <div>
+                <label for="fullName" class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                <div class="input-wrap relative">
+                  <div class="focus-ring"></div>
+                  <div class="relative z-10">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <input id="fullName" type="text" placeholder="John Doe" required class="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-white/10 focus:border-gold-500/50 focus:ring-2 focus:ring-gold-500/20 transition-all duration-300">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Email -->
+              <div>
+                <label for="signupEmail" class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Email Address</label>
+                <div class="input-wrap relative">
+                  <div class="focus-ring"></div>
+                  <div class="relative z-10">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/></svg>
+                    </div>
+                    <input id="signupEmail" type="email" placeholder="you@company.com" required class="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-white/10 focus:border-gold-500/50 focus:ring-2 focus:ring-gold-500/20 transition-all duration-300">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Password -->
+              <div>
+                <label for="signupPw" class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Password</label>
+                <div class="input-wrap relative">
+                  <div class="focus-ring"></div>
+                  <div class="relative z-10">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </div>
+                    <input id="signupPw" type="password" placeholder="Min 8 characters" required class="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-3 pl-10 pr-11 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-white/10 focus:border-gold-500/50 focus:ring-2 focus:ring-gold-500/20 transition-all duration-300">
+                    <button type="button" onclick="togglePw('signupPw','eyeOff1','eyeOn1')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gold-500 transition-colors" aria-label="Toggle password">
+                      <svg id="eyeOff1" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                      <svg id="eyeOn1" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Confirm Password -->
+              <div>
+                <label for="signupPwConfirm" class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Confirm Password</label>
+                <div class="input-wrap relative">
+                  <div class="focus-ring"></div>
+                  <div class="relative z-10">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <input id="signupPwConfirm" type="password" placeholder="Re-enter password" required class="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-3 pl-10 pr-11 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-white/10 focus:border-gold-500/50 focus:ring-2 focus:ring-gold-500/20 transition-all duration-300">
+                    <button type="button" onclick="togglePw('signupPwConfirm','eyeOff2','eyeOn2')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gold-500 transition-colors" aria-label="Toggle password">
+                      <svg id="eyeOff2" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                      <svg id="eyeOn2" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Terms -->
+              <div class="flex items-start gap-2.5 pt-1">
+                <input type="checkbox" id="terms" required class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-white/10 focus:ring-2 focus:ring-gold-500/30 transition mt-0.5">
+                <label for="terms" class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed cursor-pointer">I agree to the <a href="#" class="text-gold-600 dark:text-gold-400 hover:underline">Terms of Service</a> and <a href="#" class="text-gold-600 dark:text-gold-400 hover:underline">Privacy Policy</a></label>
+              </div>
+
+              <!-- Submit -->
+              <button type="submit" id="signupBtn" class="group relative w-full py-3.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-dark-950 shadow-lg shadow-gold-500/20 hover:shadow-gold-500/40 hover:-translate-y-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-dark-950 mt-2">
+                <span id="signupBtnText" class="relative z-10 flex items-center justify-center gap-2">
+                  Create Account
+                  <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                </span>
+                <div class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 animate-pulse-glow transition-opacity duration-300 pointer-events-none"></div>
+              </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="relative my-6">
+              <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200 dark:border-gray-700/50"></div></div>
+              <div class="relative flex justify-center text-xs"><span class="px-3 bg-white dark:bg-transparent text-gray-400 uppercase tracking-wider font-medium">Or sign up with</span></div>
+            </div>
+
+            <!-- Social -->
+            <div class="grid grid-cols-3 gap-3">
+              <button class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-gold-500/30 transition-all duration-300">
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                <span class="hidden sm:inline">Google</span>
+              </button>
+              <button class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-gold-500/30 transition-all duration-300">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <span class="hidden sm:inline">GitHub</span>
+              </button>
+              <button class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-gold-500/30 transition-all duration-300">
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg>
+                <span class="hidden sm:inline">MS</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ===== STEP 2: OTP VERIFICATION ===== -->
+          <div id="step2" class="step-panel step-hidden">
+            
+            <!-- Back button -->
+            <button onclick="goToStep(1)" class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gold-500 transition-colors mb-6">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              Back
+            </button>
+
+            <!-- Icon -->
+            <div class="flex justify-center mb-5">
+              <div class="w-16 h-16 rounded-2xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center" style="box-shadow:0 0 30px rgba(240,185,11,0.1)">
+                <svg class="w-8 h-8 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              </div>
+            </div>
+
+            <div class="text-center mb-8">
+              <h1 class="text-2xl font-bold tracking-tight">Verify Your Email</h1>
+              <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">We've sent a 6-digit code to<br><span id="otpEmail" class="font-semibold text-gray-700 dark:text-gray-300">you@company.com</span></p>
+            </div>
+
+            <!-- OTP Inputs -->
+            <div class="flex justify-center gap-2.5 sm:gap-3 mb-6" id="otpGroup">
+              <input type="text" maxlength="1" class="otp-input" data-index="0" autocomplete="one-time-code" inputmode="numeric">
+              <input type="text" maxlength="1" class="otp-input" data-index="1" inputmode="numeric">
+              <input type="text" maxlength="1" class="otp-input" data-index="2" inputmode="numeric">
+              <div class="flex items-center"><span class="w-2 h-0.5 bg-gray-300 dark:bg-gray-600 rounded"></span></div>
+              <input type="text" maxlength="1" class="otp-input" data-index="3" inputmode="numeric">
+              <input type="text" maxlength="1" class="otp-input" data-index="4" inputmode="numeric">
+              <input type="text" maxlength="1" class="otp-input" data-index="5" inputmode="numeric">
+            </div>
+
+            <!-- Error message (hidden by default) -->
+            <p id="otpError" class="text-center text-xs text-red-500 mb-4 hidden">Invalid code. Please try again.</p>
+
+            <!-- Verify Button -->
+            <button id="verifyBtn" class="group relative w-full py-3.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-dark-950 shadow-lg shadow-gold-500/20 hover:shadow-gold-500/40 hover:-translate-y-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-dark-950">
+              <span id="verifyBtnText" class="relative z-10 flex items-center justify-center gap-2">
+                Verify & Continue
+                <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </span>
+              <div class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 animate-pulse-glow transition-opacity duration-300 pointer-events-none"></div>
+            </button>
+
+            <!-- Resend -->
+            <div class="text-center mt-5">
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Didn't receive the code?<br>
+                <button id="resendBtn" onclick="startResendTimer()" class="font-semibold text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                  <span id="resendText">Resend in 0:30</span>
+                </button>
+              </p>
+            </div>
+          </div>
+
+        </div><!-- /step wrapper -->
+
+        <!-- Footer -->
+        <div class="mt-8 text-center">
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Already have an account?
+            <a href="#" class="font-semibold text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 transition-colors">Sign in</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-6 text-center text-xs text-gray-400 dark:text-gray-600">© 2025 CaptchaⱮaster. All rights reserved.</p>
+  </div>
+</div>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+// === Theme ===
+const html=document.documentElement;
+const themeBtn=document.getElementById('themeBtn');
+if(localStorage.getItem('theme')==='light') html.classList.remove('dark');
+themeBtn.addEventListener('click',()=>{html.classList.toggle('dark');localStorage.setItem('theme',html.classList.contains('dark')?'dark':'light');});
+
+// === Password Toggle ===
+function togglePw(inputId, offId, onId){
+  const i=document.getElementById(inputId);
+  const o=document.getElementById(offId),n=document.getElementById(onId);
+  const p=i.type==='password'; i.type=p?'text':'password';
+  o.classList.toggle('hidden',p); n.classList.toggle('hidden',!p);
+}
+
+// === Steps ===
+function goToStep(step){
+  const s1=document.getElementById('step1'),s2=document.getElementById('step2');
+  const d1=document.getElementById('dot1'),d2=document.getElementById('dot2');
+  if(step===1){
+    s1.className='step-panel step-visible'; s2.className='step-panel step-hidden';
+    d1.className='w-8 h-1.5 rounded-full bg-gold-500 transition-all duration-500';
+    d2.className='w-8 h-1.5 rounded-full bg-gray-200 dark:bg-white/10 transition-all duration-500';
+  } else {
+    s1.className='step-panel step-hidden'; s2.className='step-panel step-visible';
+    d1.className='w-8 h-1.5 rounded-full bg-gray-200 dark:bg-white/10 transition-all duration-500';
+    d2.className='w-8 h-1.5 rounded-full bg-gold-500 transition-all duration-500';
+    // Set email in OTP step
+    const email=document.getElementById('signupEmail').value;
+    document.getElementById('otpEmail').textContent=email||'you@company.com';
+    // Start resend timer
+    startResendTimer();
+    // Focus first OTP input
+    setTimeout(()=>{const first=document.querySelector('.otp-input');if(first)first.focus();},400);
+  }
+}
+
+// === Sign Up Form ===
+document.getElementById('signupForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const btn=document.getElementById('signupBtnText');
+  btn.innerHTML=`<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Creating account...`;
+  setTimeout(()=>{
+    btn.innerHTML=`Create Account<svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>`;
+    goToStep(2);
+  },1500);
+});
+
+// === OTP Inputs ===
+const otpInputs=document.querySelectorAll('.otp-input');
+otpInputs.forEach((input,index)=>{
+  input.addEventListener('keyup',(e)=>{
+    if(e.key==='Backspace'){
+      input.value='';
+      if(index>0) otpInputs[index-1].focus();
+    } else if(input.value.length===1){
+      if(index<otpInputs.length-1) otpInputs[index+1].focus();
+    }
+  });
+  input.addEventListener('paste',(e)=>{
+    e.preventDefault();
+    const data=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
+    data.split('').forEach((char,i)=>{if(otpInputs[i])otpInputs[i].value=char;});
+    const next=Math.min(data.length,otpInputs.length-1);
+    otpInputs[next].focus();
+  });
+  // Allow only numbers
+  input.addEventListener('input',()=>{
+    input.value=input.value.replace(/\D/g,'');
+  });
+});
+
+// === Verify Button ===
+document.getElementById('verifyBtn').addEventListener('click',()=>{
+  const btn=document.getElementById('verifyBtnText');
+  const err=document.getElementById('otpError');
+  err.classList.add('hidden');
+  btn.innerHTML=`<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Verifying...`;
+  setTimeout(()=>{
+    btn.innerHTML=`Verify & Continue<svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>`;
+    // Demo: show success
+    const card=document.querySelector('.relative.z-20');
+    card.innerHTML=`
+      <div class="text-center py-8">
+        <div class="flex justify-center mb-5">
+          <div class="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center" style="box-shadow:0 0 40px rgba(16,185,129,0.15)">
+            <svg class="w-10 h-10 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          </div>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight">You're All Set!</h2>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">Your account has been verified successfully. Welcome to CaptchaⱮaster.</p>
+        <a href="#" class="group relative inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 text-dark-950 shadow-lg shadow-gold-500/20 hover:shadow-gold-500/40 hover:-translate-y-0.5 transition-all duration-300 mt-8">
+          Go to Dashboard
+          <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+          <div class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 animate-pulse-glow transition-opacity duration-300 pointer-events-none"></div>
+        </a>
+      </div>`;
+  },2000);
+});
+
+// === Resend Timer ===
+let timerInterval;
+function startResendTimer(){
+  const btn=document.getElementById('resendBtn');
+  const txt=document.getElementById('resendText');
+  btn.disabled=true;
+  let sec=30;
+  clearInterval(timerInterval);
+  txt.textContent=`Resend in 0:${sec.toString().padStart(2,'0')}`;
+  timerInterval=setInterval(()=>{
+    sec--;
+    txt.textContent=`Resend in 0:${sec.toString().padStart(2,'0')}`;
+    if(sec<=0){
+      clearInterval(timerInterval);
+      btn.disabled=false;
+      txt.textContent='Resend Code';
+    }
+  },1000);
+}
+
+// === Particles ===
+const cvs=document.getElementById('particles');
+if(cvs){
+  const ctx=cvs.getContext('2d');let pts=[];const N=25;
+  function rs(){const p=cvs.parentElement;cvs.width=p.offsetWidth;cvs.height=p.offsetHeight;}
+  rs();window.addEventListener('resize',rs);
+  for(let i=0;i<N;i++)pts.push({x:Math.random()*cvs.width,y:Math.random()*cvs.height,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,r:Math.random()*1.5+.5,a:Math.random()*.25+.05});
+  function dr(){
+    if(!cvs.parentElement)return;ctx.clearRect(0,0,cvs.width,cvs.height);
+    pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=cvs.width;if(p.x>cvs.width)p.x=0;if(p.y<0)p.y=cvs.height;if(p.y>cvs.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(240,185,11,${p.a})`;ctx.fill();});
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(240,185,11,${(1-d/120)*.06})`;ctx.lineWidth=.5;ctx.stroke();}}
+    requestAnimationFrame(dr);
+  }
+  dr();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot" class="dark scroll-smooth">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CaptchaⱮaster — AI-Powered CAPTCHA Solving</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* ═══════════════════════════════════
+   CSS VARIABLES & BASE
+═══════════════════════════════════ */
+:root {
+  --gold: #f0b90b;
+  --gold-l: #ffd460;
+  --gold-d: #c99a08;
+  --gold-dim: rgba(240,185,11,0.15);
+  --gold-glow: 0 0 32px rgba(240,185,11,0.35);
+  font-family: 'DM Sans', sans-serif;
+}
+.dark { --bg: #09090b; --bg2: #0f1014; --surface: rgba(18,22,28,0.7); --border: rgba(240,185,11,0.12); --text: #f0f0f0; --muted: #6b7280; }
+.light { --bg: #f5f5f5; --bg2: #ffffff; --surface: rgba(255,255,255,0.8); --border: rgba(0,0,0,0.09); --text: #111111; --muted: #6b7280; }
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);overflow-x:hidden;transition:background .35s,color .35s}
+body.light{background:#f0f0f0}
+
+/* ══ SCROLLBAR ══ */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(240,185,11,.4);border-radius:4px}
+
+/* ══ TYPOGRAPHY ══ */
+.font-display{font-family:'Syne',sans-serif}
+.gold-text{background:linear-gradient(135deg,#f0b90b,#ffd460,#c99a08);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.gold-text-static{color:#f0b90b;text-shadow:0 0 20px rgba(240,185,11,.4)}
+
+/* ══ GLASS CARDS ══ */
+.glass{background:var(--surface);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid var(--border);border-radius:16px}
+.glass-sm{border-radius:12px}
+.glow-border{box-shadow:0 0 0 1px rgba(240,185,11,.3),0 0 28px rgba(240,185,11,.12)}
+.card-hover{transition:transform .3s,box-shadow .3s,border-color .3s}
+.card-hover:hover{transform:translateY(-4px);border-color:rgba(240,185,11,.35);box-shadow:0 16px 48px rgba(0,0,0,.35),0 0 24px rgba(240,185,11,.12)}
+
+/* ══ BUTTONS ══ */
+.btn-gold{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:linear-gradient(135deg,#f0b90b,#c99a08);border-radius:12px;color:#09090b;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.02em;border:none;cursor:pointer;transition:box-shadow .3s,transform .2s;box-shadow:0 4px 20px rgba(240,185,11,.3)}
+.btn-gold:hover{box-shadow:0 0 0 3px rgba(240,185,11,.25),0 8px 32px rgba(240,185,11,.5);transform:translateY(-2px)}
+.btn-outline{display:inline-flex;align-items:center;gap:8px;padding:11px 26px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;font-size:.9rem;cursor:pointer;transition:all .25s}
+.btn-outline:hover{background:rgba(240,185,11,.06);border-color:rgba(240,185,11,.4);color:#f0b90b}
+.light .btn-outline{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.15);color:#111}
+.light .btn-outline:hover{background:rgba(240,185,11,.08);border-color:rgba(240,185,11,.45);color:#c99a08}
+
+/* ══ ANIMATIONS ══ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes floatSlow{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-18px) rotate(2deg)}}
+@keyframes blobDrift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-25px) scale(1.1)}100%{transform:translate(-20px,30px) scale(.95)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes ping{0%{transform:scale(1);opacity:1}75%,100%{transform:scale(2);opacity:0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes countUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes barGrow{from{height:0}to{height:var(--h)}}
+@keyframes lineGrow{from{stroke-dashoffset:300}to{stroke-dashoffset:0}}
+@keyframes dash{to{stroke-dashoffset:0}}
+
+.animate-fade-up{animation:fadeUp .7s cubic-bezier(.22,1,.36,1) both}
+.animate-fade{animation:fadeIn .6s ease both}
+.animate-float{animation:float 4s ease-in-out infinite}
+.animate-float-slow{animation:floatSlow 6s ease-in-out infinite}
+.delay-1{animation-delay:.1s}.delay-2{animation-delay:.2s}.delay-3{animation-delay:.3s}.delay-4{animation-delay:.4s}.delay-5{animation-delay:.5s}.delay-6{animation-delay:.6s}
+
+/* ══ PARTICLES ══ */
+#particles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6}
+
+/* ══ BLOBS ══ */
+.blob{position:absolute;border-radius:50%;filter:blur(100px);pointer-events:none;animation:blobDrift 20s ease-in-out infinite alternate}
+.blob-1{width:600px;height:600px;background:radial-gradient(circle,rgba(240,185,11,.12),transparent 70%);top:-150px;left:-150px;animation-duration:22s}
+.blob-2{width:450px;height:450px;background:radial-gradient(circle,rgba(240,185,11,.09),transparent 70%);bottom:-100px;right:-80px;animation-duration:18s;animation-delay:-9s}
+.blob-3{width:300px;height:300px;background:radial-gradient(circle,rgba(201,154,8,.08),transparent 70%);top:40%;left:55%;animation-duration:28s;animation-delay:-5s}
+
+/* ══ NAVBAR ══ */
+#navbar{position:fixed;top:0;left:0;right:0;z-index:100;transition:background .3s,box-shadow .3s,backdrop-filter .3s}
+#navbar.scrolled{background:rgba(9,9,11,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 1px 0 rgba(240,185,11,.1)}
+.light #navbar.scrolled{background:rgba(245,245,245,.9)}
+
+/* ══ HERO MOCKUP ══ */
+.mockup-card{border-radius:14px;overflow:hidden}
+.bar{border-radius:4px;animation:barGrow .8s ease-out both;transform-origin:bottom}
+.status-dot{width:8px;height:8px;border-radius:50%;animation:pulse 2s ease-in-out infinite}
+
+/* ══ SHIMMER ══ */
+.shimmer{background:linear-gradient(90deg,transparent 0%,rgba(240,185,11,.08) 50%,transparent 100%);background-size:200% 100%;animation:shimmer 2.5s ease-in-out infinite}
+
+/* ══ SECTION ══ */
+section{position:relative;overflow:hidden}
+.section-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.2);border-radius:99px;font-size:.75rem;font-weight:600;color:#f0b90b;letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px}
+
+/* ══ STATS ══ */
+.stat-card{position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(240,185,11,.04),transparent);pointer-events:none}
+
+/* ══ FEATURE ICON ══ */
+.feat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(240,185,11,.15),rgba(240,185,11,.06));border:1px solid rgba(240,185,11,.2);box-shadow:0 0 20px rgba(240,185,11,.08)}
+
+/* ══ PRICING ══ */
+.price-card-pro{position:relative;background:linear-gradient(145deg,rgba(18,22,28,.9),rgba(24,28,36,.8));border:1px solid rgba(240,185,11,.45);box-shadow:0 0 0 1px rgba(240,185,11,.1),0 24px 64px rgba(0,0,0,.5),0 0 40px rgba(240,185,11,.12)}
+.price-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#f0b90b,#c99a08);border-radius:99px;padding:4px 16px;font-size:.72rem;font-weight:700;color:#09090b;font-family:'Syne',sans-serif;letter-spacing:.06em;white-space:nowrap}
+.check-item{display:flex;align-items:center;gap:10px;font-size:.875rem;color:var(--muted)}
+.check-item svg{flex-shrink:0;color:#f0b90b}
+.light .check-item{color:#555}
+
+/* ══ TESTIMONIAL ══ */
+.stars{color:#f0b90b;font-size:14px;letter-spacing:2px}
+
+/* ══ FAQ ACCORDION ══ */
+.faq-item .faq-body{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.4,0,.2,1),opacity .3s}
+.faq-item.open .faq-body{max-height:300px;opacity:1}
+.faq-item .faq-body{opacity:0}
+.faq-item.open .faq-arrow{transform:rotate(45deg)}
+.faq-arrow{transition:transform .3s}
+
+/* ══ FOOTER ══ */
+footer{border-top:1px solid var(--border)}
+.social-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--muted);transition:all .25s;cursor:pointer}
+.social-icon:hover{background:rgba(240,185,11,.1);border-color:rgba(240,185,11,.3);color:#f0b90b;box-shadow:0 0 12px rgba(240,185,11,.15)}
+.light .social-icon{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.1)}
+
+/* ══ INTERSECTION OBSERVER ══ */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+.reveal.visible{opacity:1;transform:none}
+
+/* ══ LIGHT OVERRIDES ══ */
+.light body,.light{color:#111}
+.light .glass{background:rgba(255,255,255,.82);border-color:rgba(0,0,0,.09);box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.light .text-\[\#9AA3AF\]{color:#555}
+
+/* ══ MOBILE ══ */
+@media(max-width:768px){
+  .hero-grid{grid-template-columns:1fr!important}
+  .mockup-wrapper{display:none}
+  .stats-grid{grid-template-columns:repeat(2,1fr)!important}
+  .feat-grid{grid-template-columns:1fr!important}
+  .price-grid{grid-template-columns:1fr!important}
+  .testi-grid{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body class="dark">
+
+<!-- ═══ PARTICLES CANVAS ═══ -->
+<canvas id="particles"></canvas>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav id="navbar" class="px-6 py-4">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <!-- Logo -->
+    <a href="#" class="flex items-center gap-2.5 no-underline">
+      <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#f0b90b,#c99a08);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(240,185,11,.35)">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="1" y="1" width="7" height="7" rx="1.5" fill="#09090b"/><rect x="12" y="1" width="7" height="7" rx="1.5" fill="#09090b"/><rect x="1" y="12" width="7" height="7" rx="1.5" fill="#09090b"/><rect x="12" y="12" width="7" height="7" rx="1.5" fill="#09090b"/><circle cx="10" cy="10" r="2" fill="#09090b"/></svg>
+      </div>
+      <span class="font-display font-700 text-lg" style="font-family:'Syne',sans-serif;font-weight:700">
+        <span style="color:var(--text)">Captcha</span><span style="color:#f0b90b;text-shadow:0 0 16px rgba(240,185,11,.4)">Ɱaster</span>
+      </span>
+    </a>
+    <!-- Nav Links -->
+    <div class="hidden md:flex items-center gap-8" style="font-size:.875rem;font-weight:500">
+      <a href="#features" class="transition-colors hover:text-yellow-400" style="color:var(--muted);text-decoration:none">Features</a>
+      <a href="#pricing" class="transition-colors hover:text-yellow-400" style="color:var(--muted);text-decoration:none">Pricing</a>
+      <a href="#faq" class="transition-colors hover:text-yellow-400" style="color:var(--muted);text-decoration:none">FAQ</a>
+      <a href="#" class="transition-colors hover:text-yellow-400" style="color:var(--muted);text-decoration:none">Docs</a>
+    </div>
+    <!-- Actions -->
+    <div class="flex items-center gap-3">
+      <!-- Theme Toggle -->
+      <button id="themeToggle" aria-label="Toggle theme" style="width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .25s;color:var(--muted)">
+        <svg id="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg id="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <a href="captchamaster-login.html" class="btn-gold" style="text-decoration:none;font-size:.85rem;padding:9px 20px">Get Started</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section id="hero" style="min-height:100vh;display:flex;align-items:center;padding:120px 24px 80px;position:relative;overflow:hidden">
+  <!-- Blobs -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <!-- Grid BG -->
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(240,185,11,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(240,185,11,.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;mask-image:radial-gradient(ellipse 80% 60% at 50% 50%,black 40%,transparent 100%)"></div>
+
+  <div class="max-w-7xl mx-auto w-full hero-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;position:relative;z-index:2">
+    <!-- LEFT -->
+    <div>
+      <div class="section-tag animate-fade-up">
+        <span style="width:6px;height:6px;border-radius:50%;background:#f0b90b;display:inline-block;animation:pulse 2s ease-in-out infinite"></span>
+        AI-Powered CAPTCHA Solving
+      </div>
+      <h1 class="font-display animate-fade-up delay-1" style="font-family:'Syne',sans-serif;font-size:clamp(2.4rem,5vw,3.8rem);font-weight:800;line-height:1.1;letter-spacing:-.03em;margin-bottom:24px">
+        Automate CAPTCHA<br/>Solving <span class="gold-text">Like Never</span><br/>Before
+      </h1>
+      <p class="animate-fade-up delay-2" style="font-size:1.05rem;line-height:1.7;color:var(--muted);max-width:480px;margin-bottom:36px">
+        Harness military-grade AI to solve reCAPTCHA, hCaptcha, and 50+ CAPTCHA types at <strong style="color:var(--text)">99.7% accuracy</strong> in under 2 seconds. Built for developers who demand scale.
+      </p>
+      <div class="flex flex-wrap gap-3 animate-fade-up delay-3" style="margin-bottom:48px">
+        <button class="btn-gold">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l7 4.5L5 12V3z"/></svg>
+          Get Started Free
+        </button>
+        <button class="btn-outline">View Pricing →</button>
+      </div>
+      <!-- Floating Badges -->
+      <div class="flex flex-wrap gap-3 animate-fade-up delay-4">
+        <div class="glass glass-sm" style="padding:8px 14px;display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:600">
+          <span style="color:#22c55e">✓</span> <span style="color:var(--muted)">No Credit Card</span>
+        </div>
+        <div class="glass glass-sm" style="padding:8px 14px;display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:600">
+          <span style="color:#f0b90b">⚡</span> <span style="color:var(--muted)">&lt; 2s Response</span>
+        </div>
+        <div class="glass glass-sm" style="padding:8px 14px;display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:600">
+          <span style="color:#3b82f6">🔒</span> <span style="color:var(--muted)">99.99% Uptime SLA</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Dashboard Mockup -->
+    <div class="mockup-wrapper animate-float-slow animate-fade delay-2" style="position:relative">
+      <!-- Glow behind -->
+      <div style="position:absolute;inset:-20px;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(240,185,11,.1),transparent);border-radius:50%;pointer-events:none;filter:blur(20px)"></div>
+      <!-- Main card -->
+      <div class="glass" style="padding:20px;position:relative;box-shadow:0 32px 80px rgba(0,0,0,.6),0 0 40px rgba(240,185,11,.08)">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#f0b90b">CAPTCHA Dashboard</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e"></div>
+            <span style="font-size:.7rem;color:#22c55e;font-weight:600">LIVE</span>
+          </div>
+        </div>
+        <!-- Stats row -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+          <div style="background:rgba(240,185,11,.07);border:1px solid rgba(240,185,11,.15);border-radius:10px;padding:10px;text-align:center">
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:#f0b90b">1.2M</div>
+            <div style="font-size:.68rem;color:var(--muted)">Solved Today</div>
+          </div>
+          <div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:10px;text-align:center">
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:#22c55e">99.7%</div>
+            <div style="font-size:.68rem;color:var(--muted)">Success Rate</div>
+          </div>
+          <div style="background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:10px;text-align:center">
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:#3b82f6">1.8s</div>
+            <div style="font-size:.68rem;color:var(--muted)">Avg Time</div>
+          </div>
+        </div>
+        <!-- Chart -->
+        <div style="background:rgba(0,0,0,.2);border-radius:10px;padding:14px;margin-bottom:14px">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px;font-weight:600">Requests / Hour</div>
+          <div style="display:flex;align-items:flex-end;gap:5px;height:56px">
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.6),rgba(240,185,11,.2));border-radius:3px 3px 0 0;--h:55%;height:55%;animation:barGrow .8s ease-out .1s both"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.6),rgba(240,185,11,.2));border-radius:3px 3px 0 0;--h:72%;height:72%;animation:barGrow .8s ease-out .2s both"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.6),rgba(240,185,11,.2));border-radius:3px 3px 0 0;--h:45%;height:45%;animation:barGrow .8s ease-out .3s both"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.9),rgba(240,185,11,.3));border-radius:3px 3px 0 0;--h:90%;height:90%;animation:barGrow .8s ease-out .4s both;box-shadow:0 -4px 12px rgba(240,185,11,.3)"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.6),rgba(240,185,11,.2));border-radius:3px 3px 0 0;--h:65%;height:65%;animation:barGrow .8s ease-out .5s both"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.6),rgba(240,185,11,.2));border-radius:3px 3px 0 0;--h:80%;height:80%;animation:barGrow .8s ease-out .6s both"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.6),rgba(240,185,11,.2));border-radius:3px 3px 0 0;--h:55%;height:55%;animation:barGrow .8s ease-out .7s both"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.9),rgba(240,185,11,.3));border-radius:3px 3px 0 0;--h:95%;height:95%;animation:barGrow .8s ease-out .8s both;box-shadow:0 -4px 12px rgba(240,185,11,.35)"></div>
+            <div style="flex:1;background:linear-gradient(180deg,rgba(240,185,11,.6),rgba(240,185,11,.2));border-radius:3px 3px 0 0;--h:70%;height:70%;animation:barGrow .8s ease-out .9s both"></div>
+          </div>
+        </div>
+        <!-- Activity Log -->
+        <div style="font-size:.7rem;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.05em">RECENT ACTIVITY</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.1);border-radius:8px">
+            <div class="status-dot" style="background:#22c55e;width:6px;height:6px;flex-shrink:0"></div>
+            <span style="font-size:.72rem;color:#22c55e;font-weight:600">SOLVED</span>
+            <span style="font-size:.72rem;color:var(--muted);flex:1">reCAPTCHA v3</span>
+            <span style="font-size:.68rem;color:var(--muted)">1.2s</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.1);border-radius:8px">
+            <div class="status-dot" style="background:#22c55e;width:6px;height:6px;flex-shrink:0"></div>
+            <span style="font-size:.72rem;color:#22c55e;font-weight:600">SOLVED</span>
+            <span style="font-size:.72rem;color:var(--muted);flex:1">hCaptcha</span>
+            <span style="font-size:.68rem;color:var(--muted)">0.9s</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(240,185,11,.06);border:1px solid rgba(240,185,11,.1);border-radius:8px">
+            <div class="status-dot" style="background:#f0b90b;width:6px;height:6px;flex-shrink:0"></div>
+            <span style="font-size:.72rem;color:#f0b90b;font-weight:600">QUEUE</span>
+            <span style="font-size:.72rem;color:var(--muted);flex:1">Cloudflare Turnstile</span>
+            <span style="font-size:.68rem;color:var(--muted)">—</span>
+          </div>
+        </div>
+      </div>
+      <!-- Floating badge -->
+      <div class="glass animate-float" style="position:absolute;top:-18px;right:-18px;padding:8px 14px;display:flex;align-items:center;gap:7px;border-color:rgba(34,197,94,.3);animation-delay:-.5s">
+        <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e"></div>
+        <span style="font-size:.75rem;font-weight:700;color:#22c55e">All Systems Operational</span>
+      </div>
+      <div class="glass animate-float" style="position:absolute;bottom:-14px;left:-14px;padding:8px 14px;display:flex;align-items:center;gap:7px;animation-delay:-2s">
+        <span style="font-size:1rem">⚡</span>
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:#f0b90b">50+ CAPTCHA Types</div>
+          <div style="font-size:.65rem;color:var(--muted)">Supported</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<section id="stats" style="padding:64px 24px;position:relative">
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(240,185,11,.03),transparent);pointer-events:none"></div>
+  <div class="max-w-7xl mx-auto">
+    <div class="stats-grid reveal" style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px">
+      <div class="glass stat-card card-hover" style="padding:28px 24px;text-align:center">
+        <div class="font-display gold-text" style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;line-height:1" data-count="2400000000" data-suffix="B+">2.4B+</div>
+        <div style="font-size:.85rem;color:var(--muted);margin-top:6px">Captchas Solved</div>
+        <div style="width:40px;height:2px;background:linear-gradient(90deg,#f0b90b,transparent);margin:12px auto 0;border-radius:1px"></div>
+      </div>
+      <div class="glass stat-card card-hover" style="padding:28px 24px;text-align:center">
+        <div class="font-display gold-text" style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;line-height:1">99.7%</div>
+        <div style="font-size:.85rem;color:var(--muted);margin-top:6px">Success Rate</div>
+        <div style="width:40px;height:2px;background:linear-gradient(90deg,#f0b90b,transparent);margin:12px auto 0;border-radius:1px"></div>
+      </div>
+      <div class="glass stat-card card-hover" style="padding:28px 24px;text-align:center">
+        <div class="font-display gold-text" style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;line-height:1">48K+</div>
+        <div style="font-size:.85rem;color:var(--muted);margin-top:6px">Active Users</div>
+        <div style="width:40px;height:2px;background:linear-gradient(90deg,#f0b90b,transparent);margin:12px auto 0;border-radius:1px"></div>
+      </div>
+      <div class="glass stat-card card-hover" style="padding:28px 24px;text-align:center">
+        <div class="font-display gold-text" style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;line-height:1">12M+</div>
+        <div style="font-size:.85rem;color:var(--muted);margin-top:6px">API Requests / Day</div>
+        <div style="width:40px;height:2px;background:linear-gradient(90deg,#f0b90b,transparent);margin:12px auto 0;border-radius:1px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section id="features" style="padding:100px 24px">
+  <div class="max-w-7xl mx-auto">
+    <div style="text-align:center;margin-bottom:64px" class="reveal">
+      <div class="section-tag" style="margin-left:auto;margin-right:auto;width:fit-content">Platform Features</div>
+      <h2 class="font-display" style="font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.2;margin-bottom:14px">
+        Everything you need to <span class="gold-text">scale automation</span>
+      </h2>
+      <p style="font-size:1rem;color:var(--muted);max-width:520px;margin:0 auto;line-height:1.7">From simple integrations to enterprise-grade infrastructure, CaptchaⱮaster adapts to your workflow.</p>
+    </div>
+    <div class="feat-grid reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <!-- Feature 1 -->
+      <div class="glass card-hover" style="padding:28px">
+        <div class="feat-icon" style="margin-bottom:18px">
+          <svg width="22" height="22" fill="none" stroke="#f0b90b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:8px">AI-Powered Solving</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">Deep neural networks trained on billions of CAPTCHAs for unmatched accuracy across every type.</p>
+      </div>
+      <!-- Feature 2 -->
+      <div class="glass card-hover" style="padding:28px">
+        <div class="feat-icon" style="margin-bottom:18px">
+          <svg width="22" height="22" fill="none" stroke="#f0b90b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:8px">Ultra Fast API</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">REST & WebSocket APIs with global edge nodes. Average response under 2 seconds, even at massive scale.</p>
+      </div>
+      <!-- Feature 3 -->
+      <div class="glass card-hover" style="padding:28px">
+        <div class="feat-icon" style="margin-bottom:18px">
+          <svg width="22" height="22" fill="none" stroke="#f0b90b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h3m12 0h3M12 3v3m0 12v3m-6.36-2.64 2.12-2.12m8.48-8.48 2.12-2.12M5.64 5.64l2.12 2.12m8.48 8.48 2.12 2.12"/></svg>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:8px">Browser Automation</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">Native Playwright, Puppeteer, and Selenium plugins. Drop-in middleware for your existing automation stack.</p>
+      </div>
+      <!-- Feature 4 -->
+      <div class="glass card-hover" style="padding:28px">
+        <div class="feat-icon" style="margin-bottom:18px">
+          <svg width="22" height="22" fill="none" stroke="#f0b90b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:8px">Multi CAPTCHA Support</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">50+ CAPTCHA types: reCAPTCHA v2/v3, hCaptcha, Cloudflare, FunCaptcha, Geetest, and more.</p>
+      </div>
+      <!-- Feature 5 -->
+      <div class="glass card-hover" style="padding:28px">
+        <div class="feat-icon" style="margin-bottom:18px">
+          <svg width="22" height="22" fill="none" stroke="#f0b90b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M18 20V10m-6 10V4M6 20v-6"/></svg>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:8px">Real-time Analytics</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">Live dashboards with success rates, latency percentiles, usage trends, and custom alerting webhooks.</p>
+      </div>
+      <!-- Feature 6 -->
+      <div class="glass card-hover" style="padding:28px">
+        <div class="feat-icon" style="margin-bottom:18px">
+          <svg width="22" height="22" fill="none" stroke="#f0b90b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:8px">Secure Cloud Infrastructure</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">SOC 2 Type II compliant. All requests encrypted in transit and at rest. Zero-log privacy policy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DASHBOARD PREVIEW ═══ -->
+<section id="dashboard" style="padding:80px 24px;position:relative">
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(240,185,11,.04),transparent);pointer-events:none"></div>
+  <div class="max-w-7xl mx-auto">
+    <div style="text-align:center;margin-bottom:48px" class="reveal">
+      <div class="section-tag" style="margin:0 auto 16px;width:fit-content">Admin Panel</div>
+      <h2 class="font-display" style="font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.2">
+        A dashboard built for <span class="gold-text">power users</span>
+      </h2>
+    </div>
+    <!-- Big Dashboard Card -->
+    <div class="glass reveal glow-border" style="padding:24px;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 60px rgba(240,185,11,.06)">
+      <!-- Top bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;color:#f0b90b">CaptchaⱮaster</span>
+          <span style="font-size:.72rem;color:var(--muted);background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px">Pro Plan</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="display:flex;align-items:center;gap:5px"><div class="status-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e;width:7px;height:7px"></div><span style="font-size:.72rem;color:#22c55e;font-weight:600">All Systems Live</span></div>
+        </div>
+      </div>
+      <!-- Dashboard Grid -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
+        <!-- Left: Chart -->
+        <div>
+          <div style="background:rgba(0,0,0,.2);border-radius:12px;padding:18px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <span style="font-size:.78rem;font-weight:600;color:var(--text)">Solving Volume — Last 7 Days</span>
+              <span style="font-size:.7rem;color:#f0b90b;font-weight:600">+24.3% ↑</span>
+            </div>
+            <!-- SVG Line Chart -->
+            <svg width="100%" height="90" viewBox="0 0 400 90" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#f0b90b" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#f0b90b" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0 70 L57 55 L114 60 L171 35 L228 40 L285 20 L342 25 L400 10 L400 90 L0 90Z" fill="url(#chartGrad)"/>
+              <path d="M0 70 L57 55 L114 60 L171 35 L228 40 L285 20 L342 25 L400 10" fill="none" stroke="#f0b90b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="600" stroke-dashoffset="600" style="animation:dash 1.5s ease-out .5s forwards"/>
+              <circle cx="400" cy="10" r="4" fill="#f0b90b" opacity="0"/>
+              <circle cx="400" cy="10" r="4" fill="#f0b90b" style="animation:fadeIn .3s ease 2s forwards;opacity:0"/>
+            </svg>
+          </div>
+          <!-- Table -->
+          <div style="background:rgba(0,0,0,.15);border-radius:12px;padding:14px">
+            <div style="font-size:.72rem;font-weight:600;color:var(--muted);letter-spacing:.06em;margin-bottom:12px">RECENT REQUESTS</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:grid;grid-template-columns:1fr 100px 70px 70px;gap:8px;font-size:.7rem;color:var(--muted);padding:0 4px;border-bottom:1px solid var(--border);padding-bottom:6px">
+                <span>Type</span><span>Token</span><span>Time</span><span>Status</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 100px 70px 70px;gap:8px;font-size:.75rem;align-items:center;padding:5px 4px">
+                <span style="color:var(--text)">reCAPTCHA v3</span>
+                <span style="color:var(--muted);font-family:monospace;font-size:.68rem">03AGdBq2...</span>
+                <span style="color:#22c55e">1.2s</span>
+                <span style="background:rgba(34,197,94,.1);color:#22c55e;padding:2px 8px;border-radius:4px;font-size:.65rem;font-weight:600">SOLVED</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 100px 70px 70px;gap:8px;font-size:.75rem;align-items:center;padding:5px 4px">
+                <span style="color:var(--text)">hCaptcha</span>
+                <span style="color:var(--muted);font-family:monospace;font-size:.68rem">P1_eyJ0...</span>
+                <span style="color:#22c55e">0.9s</span>
+                <span style="background:rgba(34,197,94,.1);color:#22c55e;padding:2px 8px;border-radius:4px;font-size:.65rem;font-weight:600">SOLVED</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 100px 70px 70px;gap:8px;font-size:.75rem;align-items:center;padding:5px 4px">
+                <span style="color:var(--text)">Cloudflare Turnstile</span>
+                <span style="color:var(--muted);font-family:monospace;font-size:.68rem">0.x8jH...</span>
+                <span style="color:#f0b90b">—</span>
+                <span style="background:rgba(240,185,11,.1);color:#f0b90b;padding:2px 8px;border-radius:4px;font-size:.65rem;font-weight:600">QUEUE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: Metrics -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="background:rgba(240,185,11,.07);border:1px solid rgba(240,185,11,.15);border-radius:12px;padding:16px">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Balance</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:#f0b90b">$124.80</div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:2px">~248,000 solves remaining</div>
+          </div>
+          <div style="background:rgba(0,0,0,.2);border-radius:12px;padding:16px">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px;font-weight:600">Type Distribution</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px"><span style="color:var(--text)">reCAPTCHA</span><span style="color:#f0b90b">62%</span></div>
+                <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px"><div style="width:62%;height:100%;background:linear-gradient(90deg,#f0b90b,#c99a08);border-radius:3px"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px"><span style="color:var(--text)">hCaptcha</span><span style="color:#3b82f6">24%</span></div>
+                <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px"><div style="width:24%;height:100%;background:linear-gradient(90deg,#3b82f6,#1d4ed8);border-radius:3px"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px"><span style="color:var(--text)">Others</span><span style="color:#a855f7">14%</span></div>
+                <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px"><div style="width:14%;height:100%;background:linear-gradient(90deg,#a855f7,#7c3aed);border-radius:3px"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.12);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">API Uptime</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;color:#22c55e">99.99%</div>
+            <div style="font-size:.65rem;color:var(--muted)">Last 90 days</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section id="how" style="padding:100px 24px">
+  <div class="max-w-5xl mx-auto">
+    <div style="text-align:center;margin-bottom:64px" class="reveal">
+      <div class="section-tag" style="margin:0 auto 16px;width:fit-content">How It Works</div>
+      <h2 class="font-display" style="font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.2">
+        Up and running in <span class="gold-text">3 steps</span>
+      </h2>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;position:relative">
+      <!-- Connector lines -->
+      <div style="position:absolute;top:48px;left:33%;right:33%;height:2px;background:linear-gradient(90deg,rgba(240,185,11,.4),rgba(240,185,11,.4));display:none" id="connector1"></div>
+      <!-- Step 1 -->
+      <div class="glass card-hover" style="padding:32px 24px;text-align:center;position:relative">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,rgba(240,185,11,.2),rgba(240,185,11,.08));border:2px solid rgba(240,185,11,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 0 24px rgba(240,185,11,.15)">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:#f0b90b">01</span>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;margin-bottom:10px">Connect API</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">Grab your API key from the dashboard and add it to your project in under a minute.</p>
+        <div style="margin-top:16px;background:rgba(0,0,0,.25);border-radius:8px;padding:10px 12px;text-align:left">
+          <code style="font-size:.72rem;color:#f0b90b">api_key = "cm_live_xxxx"</code>
+        </div>
+      </div>
+      <!-- Step 2 -->
+      <div class="glass card-hover glow-border" style="padding:32px 24px;text-align:center;position:relative">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f0b90b,#c99a08);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 0 32px rgba(240,185,11,.4)">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:#09090b">02</span>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;margin-bottom:10px">Send CAPTCHA</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">POST the CAPTCHA site key and page URL. Our AI cluster picks it up instantly.</p>
+        <div style="margin-top:16px;background:rgba(0,0,0,.25);border-radius:8px;padding:10px 12px;text-align:left">
+          <code style="font-size:.72rem;color:#22c55e">POST /v1/solve</code>
+        </div>
+      </div>
+      <!-- Step 3 -->
+      <div class="glass card-hover" style="padding:32px 24px;text-align:center;position:relative">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,rgba(240,185,11,.2),rgba(240,185,11,.08));border:2px solid rgba(240,185,11,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 0 24px rgba(240,185,11,.15)">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:#f0b90b">03</span>
+        </div>
+        <h3 class="font-display" style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;margin-bottom:10px">Receive Solution</h3>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.65">Get the token back in your callback, or poll our endpoint. Average time: &lt;2 seconds.</p>
+        <div style="margin-top:16px;background:rgba(0,0,0,.25);border-radius:8px;padding:10px 12px;text-align:left">
+          <code style="font-size:.72rem;color:#3b82f6">{ "token": "03AGdBq..." }</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PRICING ═══ -->
+<section id="pricing" style="padding:100px 24px;position:relative">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 50% 50%,rgba(240,185,11,.04),transparent);pointer-events:none"></div>
+  <div class="max-w-6xl mx-auto">
+    <div style="text-align:center;margin-bottom:56px" class="reveal">
+      <div class="section-tag" style="margin:0 auto 16px;width:fit-content">Transparent Pricing</div>
+      <h2 class="font-display" style="font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.2">
+        Simple, <span class="gold-text">usage-based</span> pricing
+      </h2>
+      <p style="font-size:1rem;color:var(--muted);margin-top:12px">Start free. Scale as you grow. No surprise bills.</p>
+    </div>
+    <div class="price-grid reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start">
+      <!-- Starter -->
+      <div class="glass card-hover" style="padding:32px 28px;border-radius:18px">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Starter</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:2.5rem;color:var(--text)">$0</span>
+          <span style="font-size:.85rem;color:var(--muted)">/mo</span>
+        </div>
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:24px;line-height:1.5">Perfect for testing and small scripts.</p>
+        <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>1,000 solves / month</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>2 CAPTCHA types</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Community support</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Basic analytics</div>
+        </div>
+        <button class="btn-outline" style="width:100%;justify-content:center">Get Started Free</button>
+      </div>
+      <!-- Pro (highlighted) -->
+      <div class="price-card-pro" style="padding:36px 28px;border-radius:18px;margin-top:-8px;margin-bottom:-8px">
+        <div class="price-badge">MOST POPULAR</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#f0b90b;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Pro</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:2.5rem" class="gold-text">$29</span>
+          <span style="font-size:.85rem;color:var(--muted)">/mo</span>
+        </div>
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:24px;line-height:1.5">For serious developers and agencies.</p>
+        <div style="height:1px;background:rgba(240,185,11,.15);margin-bottom:20px"></div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>500,000 solves / month</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>50+ CAPTCHA types</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Priority API (99.9% SLA)</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Advanced analytics</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Webhook callbacks</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Email support</div>
+        </div>
+        <button class="btn-gold" style="width:100%;justify-content:center">Start Pro Trial</button>
+      </div>
+      <!-- Enterprise -->
+      <div class="glass card-hover" style="padding:32px 28px;border-radius:18px">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Enterprise</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:2.5rem;color:var(--text)">Custom</span>
+        </div>
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:24px;line-height:1.5">For high-volume teams & enterprises.</p>
+        <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Unlimited solves</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Dedicated infrastructure</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>99.99% uptime SLA</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>SOC 2 compliance</div>
+          <div class="check-item"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Dedicated success manager</div>
+        </div>
+        <button class="btn-outline" style="width:100%;justify-content:center">Contact Sales →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section id="testimonials" style="padding:100px 24px">
+  <div class="max-w-6xl mx-auto">
+    <div style="text-align:center;margin-bottom:56px" class="reveal">
+      <div class="section-tag" style="margin:0 auto 16px;width:fit-content">Testimonials</div>
+      <h2 class="font-display" style="font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.2">
+        Loved by <span class="gold-text">developers</span> worldwide
+      </h2>
+    </div>
+    <div class="testi-grid reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div class="glass card-hover" style="padding:28px">
+        <div class="stars">★★★★★</div>
+        <p style="font-size:.875rem;color:var(--muted);line-height:1.7;margin:14px 0 20px">"CaptchaⱮaster slashed our automation pipeline bottlenecks by 90%. The API is stupidly easy and the 99.7% success rate is real — we've measured it."</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#f0b90b,#c99a08);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#09090b;flex-shrink:0">AK</div>
+          <div><div style="font-size:.85rem;font-weight:600;color:var(--text)">Alex K.</div><div style="font-size:.75rem;color:var(--muted)">Senior Engineer, DataPipe</div></div>
+        </div>
+      </div>
+      <div class="glass card-hover glow-border" style="padding:28px">
+        <div class="stars">★★★★★</div>
+        <p style="font-size:.875rem;color:var(--muted);line-height:1.7;margin:14px 0 20px">"We run 5M CAPTCHA solves a month and haven't had a meaningful outage. Their uptime SLA is legit. The Playwright plugin is chef's kiss."</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0">SR</div>
+          <div><div style="font-size:.85rem;font-weight:600;color:var(--text)">Sarah R.</div><div style="font-size:.75rem;color:var(--muted)">Lead Dev, ScraperHub</div></div>
+        </div>
+      </div>
+      <div class="glass card-hover" style="padding:28px">
+        <div class="stars">★★★★★</div>
+        <p style="font-size:.875rem;color:var(--muted);line-height:1.7;margin:14px 0 20px">"Migrated from a competitor and the difference is night and day. Faster, cheaper, and the analytics dashboard actually tells you something useful."</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0">MJ</div>
+          <div><div style="font-size:.85rem;font-weight:600;color:var(--text)">Marco J.</div><div style="font-size:.75rem;color:var(--muted)">CTO, BotForge</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section id="faq" style="padding:100px 24px">
+  <div class="max-w-3xl mx-auto">
+    <div style="text-align:center;margin-bottom:56px" class="reveal">
+      <div class="section-tag" style="margin:0 auto 16px;width:fit-content">FAQ</div>
+      <h2 class="font-display" style="font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.03em">Got <span class="gold-text">questions?</span></h2>
+    </div>
+    <div class="reveal" style="display:flex;flex-direction:column;gap:12px" id="faqList">
+      <div class="faq-item glass" style="border-radius:12px;overflow:hidden;cursor:pointer" onclick="toggleFaq(this)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px">
+          <span style="font-weight:600;font-size:.92rem">What CAPTCHA types do you support?</span>
+          <span class="faq-arrow" style="color:#f0b90b;font-size:1.2rem;line-height:1;font-weight:300">+</span>
+        </div>
+        <div class="faq-body" style="padding:0 22px">
+          <p style="font-size:.85rem;color:var(--muted);line-height:1.7;padding-bottom:18px">We support 50+ types including reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile, FunCaptcha, GeeTest, KeyCaptcha, Capy, image CAPTCHAs, text CAPTCHAs, and more. New types are added regularly.</p>
+        </div>
+      </div>
+      <div class="faq-item glass" style="border-radius:12px;overflow:hidden;cursor:pointer" onclick="toggleFaq(this)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px">
+          <span style="font-weight:600;font-size:.92rem">How fast is the solving time?</span>
+          <span class="faq-arrow" style="color:#f0b90b;font-size:1.2rem;line-height:1;font-weight:300">+</span>
+        </div>
+        <div class="faq-body" style="padding:0 22px">
+          <p style="font-size:.85rem;color:var(--muted);line-height:1.7;padding-bottom:18px">Average solving time is under 2 seconds for most CAPTCHA types. Image CAPTCHAs average 1.2s, and token-based CAPTCHAs (reCAPTCHA, hCaptcha) average 1.5–2.5s depending on difficulty.</p>
+        </div>
+      </div>
+      <div class="faq-item glass" style="border-radius:12px;overflow:hidden;cursor:pointer" onclick="toggleFaq(this)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px">
+          <span style="font-weight:600;font-size:.92rem">Is there a free trial?</span>
+          <span class="faq-arrow" style="color:#f0b90b;font-size:1.2rem;line-height:1;font-weight:300">+</span>
+        </div>
+        <div class="faq-body" style="padding:0 22px">
+          <p style="font-size:.85rem;color:var(--muted);line-height:1.7;padding-bottom:18px">Yes! The Starter plan is free forever with 1,000 solves per month. No credit card required. Pro plans include a 14-day free trial with full access to all features.</p>
+        </div>
+      </div>
+      <div class="faq-item glass" style="border-radius:12px;overflow:hidden;cursor:pointer" onclick="toggleFaq(this)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px">
+          <span style="font-weight:600;font-size:.92rem">What happens if a solve fails?</span>
+          <span class="faq-arrow" style="color:#f0b90b;font-size:1.2rem;line-height:1;font-weight:300">+</span>
+        </div>
+        <div class="faq-body" style="padding:0 22px">
+          <p style="font-size:.85rem;color:var(--muted);line-height:1.7;padding-bottom:18px">Failed solves are automatically retried at no charge. If we can't solve within the timeout, your balance is fully refunded for that request. Our current failure rate is under 0.3%.</p>
+        </div>
+      </div>
+      <div class="faq-item glass" style="border-radius:12px;overflow:hidden;cursor:pointer" onclick="toggleFaq(this)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px">
+          <span style="font-weight:600;font-size:.92rem">How do I integrate with my existing stack?</span>
+          <span class="faq-arrow" style="color:#f0b90b;font-size:1.2rem;line-height:1;font-weight:300">+</span>
+        </div>
+        <div class="faq-body" style="padding:0 22px">
+          <p style="font-size:.85rem;color:var(--muted);line-height:1.7;padding-bottom:18px">We offer official SDKs for Python, Node.js, PHP, Ruby, and Go. We also have drop-in plugins for Playwright, Puppeteer, and Selenium. Most users are fully integrated in under 10 minutes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section id="cta" style="padding:100px 24px;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 50%,rgba(240,185,11,.1),transparent);pointer-events:none"></div>
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(240,185,11,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(240,185,11,.05) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%)"></div>
+  <div class="max-w-3xl mx-auto text-center reveal" style="position:relative;z-index:2">
+    <div class="section-tag" style="margin:0 auto 20px;width:fit-content">Get Started Today</div>
+    <h2 class="font-display" style="font-family:'Syne',sans-serif;font-size:clamp(2rem,5vw,3.2rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:20px">
+      Start Automating with<br/><span class="gold-text">CaptchaⱮaster</span> Today
+    </h2>
+    <p style="font-size:1.05rem;color:var(--muted);margin-bottom:36px;line-height:1.7;max-width:480px;margin-left:auto;margin-right:auto">
+      Join 48,000+ developers already solving CAPTCHAs at scale. Get 1,000 free solves instantly — no card needed.
+    </p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <button class="btn-gold" style="padding:15px 34px;font-size:.95rem">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l7 4.5L5 12V3z"/></svg>
+        Start for Free
+      </button>
+      <button class="btn-outline" style="padding:14px 28px;font-size:.95rem">View Documentation →</button>
+    </div>
+    <!-- Trust badges -->
+    <div style="display:flex;gap:24px;justify-content:center;margin-top:40px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)"><span style="color:#22c55e">✓</span>No credit card required</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)"><span style="color:#22c55e">✓</span>Cancel anytime</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)"><span style="color:#22c55e">✓</span>SOC 2 Compliant</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer style="padding:60px 24px 32px;position:relative">
+  <div class="max-w-7xl mx-auto">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:48px">
+      <!-- Brand -->
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f0b90b,#c99a08);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(240,185,11,.3)">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="1" y="1" width="7" height="7" rx="1.5" fill="#09090b"/><rect x="12" y="1" width="7" height="7" rx="1.5" fill="#09090b"/><rect x="1" y="12" width="7" height="7" rx="1.5" fill="#09090b"/><rect x="12" y="12" width="7" height="7" rx="1.5" fill="#09090b"/><circle cx="10" cy="10" r="2" fill="#09090b"/></svg>
+          </div>
+          <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem"><span style="color:var(--text)">Captcha</span><span style="color:#f0b90b">Ɱaster</span></span>
+        </div>
+        <p style="font-size:.83rem;color:var(--muted);line-height:1.65;max-width:240px;margin-bottom:18px">AI-powered CAPTCHA solving infrastructure for developers who build at scale.</p>
+        <div style="display:flex;gap:8px">
+          <button class="social-icon" aria-label="Twitter/X">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 5.957zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </button>
+          <button class="social-icon" aria-label="GitHub">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.164 6.839 9.49.5.09.682-.218.682-.484 0-.236-.009-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.532 1.03 1.532 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.683-.104-.253-.447-1.27.097-2.646 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.376.202 2.394.1 2.646.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+          </button>
+          <button class="social-icon" aria-label="Discord">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.054A19.9 19.9 0 0 0 6.13 21.54a.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          </button>
+          <button class="social-icon" aria-label="LinkedIn">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- Product -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;color:var(--text);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Product</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Features</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Pricing</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Changelog</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Status Page</a>
+        </div>
+      </div>
+      <!-- Developers -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;color:var(--text);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Developers</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">API Reference</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">SDKs</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Examples</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Discord</a>
+        </div>
+      </div>
+      <!-- Legal -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;color:var(--text);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Company</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">About</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Privacy Policy</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Terms of Service</a>
+          <a href="#" style="font-size:.83rem;color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='#f0b90b'" onmouseout="this.style.color='var(--muted)'">Contact</a>
+        </div>
+      </div>
+    </div>
+    <!-- Bottom bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid var(--border);flex-wrap:wrap;gap:12px">
+      <span style="font-size:.78rem;color:var(--muted)">© 2025 CaptchaⱮaster. All rights reserved.</span>
+      <span style="font-size:.78rem;color:var(--muted)">Built with ⚡ for scale</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ JAVASCRIPT ═══ -->
+<script>
+/* ── Particles ── */
+const cvs = document.getElementById('particles');
+const ctx = cvs.getContext('2d');
+function resize(){ cvs.width=window.innerWidth; cvs.height=window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+const pts = Array.from({length:70},()=>({
+  x:Math.random()*window.innerWidth, y:Math.random()*window.innerHeight,
+  r:Math.random()*1.4+.3,
+  dx:(Math.random()-.5)*.25, dy:(Math.random()-.5)*.25,
+  a:Math.random()*.45+.08
+}));
+function drawPts(){
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  pts.forEach(p=>{
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(240,185,11,${p.a})`; ctx.fill();
+    p.x+=p.dx; p.y+=p.dy;
+    if(p.x<0||p.x>cvs.width) p.dx*=-1;
+    if(p.y<0||p.y>cvs.height) p.dy*=-1;
+  });
+  requestAnimationFrame(drawPts);
+}
+drawPts();
+
+/* ── Navbar scroll ── */
+const nb = document.getElementById('navbar');
+window.addEventListener('scroll',()=>{ nb.classList.toggle('scrolled', window.scrollY>40); });
+
+/* ── Theme toggle ── */
+const html = document.getElementById('htmlRoot');
+const sunI = document.getElementById('sun-icon');
+const moonI = document.getElementById('moon-icon');
+let dark = true;
+document.getElementById('themeToggle').addEventListener('click',()=>{
+  dark=!dark;
+  html.classList.toggle('dark',dark);
+  html.classList.toggle('light',!dark);
+  document.body.classList.toggle('light',!dark);
+  sunI.style.display = dark?'block':'none';
+  moonI.style.display = dark?'none':'block';
+});
+
+/* ── FAQ accordion ── */
+function toggleFaq(el){
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+  if(!isOpen) el.classList.add('open');
+}
+
+/* ── Intersection Observer reveals ── */
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('visible'); } });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+/* ── Stagger children of reveal grids ── */
+const staggerObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      Array.from(e.target.children).forEach((child,i)=>{
+        child.style.transitionDelay = (i*0.08)+'s';
+        child.classList.add('visible');
+      });
+    }
+  });
+},{threshold:.08});
+document.querySelectorAll('.feat-grid,.stats-grid,.testi-grid,.price-grid').forEach(el=>{
+  el.querySelectorAll(':scope>div').forEach(c=>{
+    c.classList.add('reveal');
+  });
+  staggerObs.observe(el);
+});
+
+/* ── Mouse parallax on hero ── */
+document.addEventListener('mousemove',e=>{
+  const cx=window.innerWidth/2, cy=window.innerHeight/2;
+  const dx=(e.clientX-cx)/cx, dy=(e.clientY-cy)/cy;
+  document.querySelectorAll('.blob').forEach((b,i)=>{
+    const m=6+i*3;
+    b.style.transform=`translate(${dx*m}px,${dy*m}px) scale(1)`;
+  });
+});
+
+/* ── SVG line dash animation trigger ── */
+const lineObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('path[stroke-dashoffset]').forEach(p=>{
+        p.style.animation='dash 1.5s ease-out .5s forwards';
+      });
+    }
+  });
+},{threshold:.3});
+document.querySelectorAll('svg').forEach(s=>lineObs.observe(s));
+</script>
+</body>
+</html>
