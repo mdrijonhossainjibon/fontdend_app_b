@@ -42,6 +42,7 @@ temp/
 
 # Uploads/Storage
 uploads/
+load/
 
 # OpenClaude
 .commandcode/
