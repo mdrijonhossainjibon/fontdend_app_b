@@ -25,7 +25,7 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
 
 export const approve = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
-  const deposit = await Deposit.findByIdAndUpdate(req.params.id, { $set: { status: 'approved' } }, { new: true });
+  const deposit = await Deposit.findByIdAndUpdate(req.params.id, { $set: { status: 'completed' } }, { new: true });
   if (!deposit) throw new ApiError(404, 'Deposit not found');
 
   if (deposit.userId) {
@@ -37,7 +37,7 @@ export const approve = asyncHandler(async (req: Request, res: Response) => {
 
 export const reject = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
-  const deposit = await Deposit.findByIdAndUpdate(req.params.id, { $set: { status: 'rejected' } }, { new: true });
+  const deposit = await Deposit.findByIdAndUpdate(req.params.id, { $set: { status: 'failed' } }, { new: true });
   if (!deposit) throw new ApiError(404, 'Deposit not found');
   sendSuccess(res, { message: 'Deposit rejected', deposit });
 });
