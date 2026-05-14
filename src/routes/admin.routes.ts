@@ -2,7 +2,21 @@ import { Router } from 'express';
 import * as admin from '@/controllers/admin';
 import { authMiddleware, adminMiddleware } from '@/middlewares/auth.middleware';
 
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || './uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
+});
+
 const router = Router();
+
+router.post('/upload-model', authMiddleware, upload.single('file'), admin.uploadModelToBot);
 
 // All admin routes require auth + admin role
 router.use(authMiddleware, adminMiddleware);

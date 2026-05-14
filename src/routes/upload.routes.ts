@@ -6,6 +6,9 @@ import asyncHandler from '@/utils/asyncHandler';
 import { sendSuccess } from '@/utils/response';
 import { authMiddleware } from '@/middlewares/auth.middleware';
 
+import axios from 'axios';
+import FormData from 'form-data';
+
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || './uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -19,10 +22,61 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800', 10) }, // 50MB
+  limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE || '524288000', 10) }, // Increased to 500MB
 });
 
 const router = Router();
+
+// Forward model to bot endpoint
+// @ts-ignore
+router.post('/model-to-bot', authMiddleware, upload.single('file'), asyncHandler(async (req, res) => {
+  const file = req.file;
+  const { botUrl } = req.body; // Expecting full bot upload URL from frontend
+
+  if (!file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+
+  if (!botUrl) {
+    return res.status(400).json({ success: false, message: 'No bot URL provided' });
+  }
+
+  try {
+    const form = new FormData();
+    form.append('file', fs.createReadStream(file.path), {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+
+    // Forward to bot endpoint
+    const response = await axios.post(botUrl, form, {
+      headers: {
+        ...form.getHeaders(),
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
+
+    // Clean up uploaded file
+    fs.unlinkSync(file.path);
+
+    res.json({
+      success: true,
+      message: 'Model forwarded to bot successfully',
+      botResponse: response.data,
+    });
+  } catch (error: any) {
+    // Clean up on error
+    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+
+    console.error('Forwarding error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to forward model to bot',
+      error: error.response?.data || error.message,
+    });
+  }
+}));
 
 // @ts-ignore
 router.post('/', authMiddleware, upload.single('file'), asyncHandler(async (req, res) => {

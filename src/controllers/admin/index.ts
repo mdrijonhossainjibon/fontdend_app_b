@@ -11,7 +11,7 @@ export { list as listBotEndpoints, create as createBotEndpoint, update as update
 export { list as listObjectClasses, create as createObjectClass, update as updateObjectClass, remove as removeObjectClass } from './object-classes.controller';
 export { list as listEmailTemplates, create as createEmailTemplate, update as updateEmailTemplate, remove as removeEmailTemplate } from './email-templates.controller';
 export { getConfigs as getCryptoConfigs, updateConfig as updateCryptoConfig, getAllDeposits as getAllCryptoDeposits } from './crypto.controller';
-export { list as listAiTrainings, create as createAiTraining, update as updateAiTraining, remove as removeAiTraining } from './ai-training.controller';
+export { list as listAiTrainings, create as createAiTraining, update as updateAiTraining, remove as removeAiTraining, uploadModelToBot } from './ai-training.controller';
 export { list as listSolutions, remove as removeSolution } from './solutions.controller';
 export { sweepCrypto } from './crypto-sweep.controller';
 export { list as listDepositAddresses, update as updateDepositAddress, remove as removeDepositAddress, checkBalance as checkDepositAddressBalance } from './deposit-addresses.controller';
