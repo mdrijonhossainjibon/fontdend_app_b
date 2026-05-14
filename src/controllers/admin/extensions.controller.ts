@@ -53,7 +53,7 @@ export const create = asyncHandler(async (req: any, res: Response) => {
   if (!data.version) return res.status(400).json({ success: false, message: 'Version is required' });
 
   const ext = await Extension.create(data);
-  sendSuccess(res, { message: 'Extension created', data: ext }, 201);
+  return sendSuccess(res, { message: 'Extension created', data: ext }, 201);
 });
 
 export const update = asyncHandler(async (req: Request, res: Response) => {
@@ -114,4 +114,5 @@ export const scan = asyncHandler(async (req: any, res: Response) => {
   };
 
   sendSuccess(res, { message: 'Scan complete', data });
+  return;
 });

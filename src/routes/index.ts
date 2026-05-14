@@ -33,9 +33,10 @@ router.get('/d/:shortId', async (req, res) => {
             finalUrl = `${req.protocol}://${req.get('host')}${finalUrl}`;
         }
         res.redirect(finalUrl);
+        return;
     } catch (error) {
         console.error('Short link error:', error);
-        res.status(500).send('Internal Server Error');
+        return res.status(500).send('Internal Server Error');
     }
 });
 

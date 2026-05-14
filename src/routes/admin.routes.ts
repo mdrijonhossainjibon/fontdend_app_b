@@ -61,7 +61,9 @@ router.post('/deposits/:id/reject', admin.rejectDeposit);
 // Extensions
 // �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 router.get('/extensions', admin.listExtensions);
+// @ts-ignore
 router.post('/extensions/scan', upload.single('file'), admin.scanExtension);
+// @ts-ignore
 router.post('/extensions', upload.single('file'), admin.createExtension);
 router.patch('/extensions/:id', admin.updateExtension);
 router.delete('/extensions/:id', admin.removeExtension);
