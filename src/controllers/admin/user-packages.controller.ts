@@ -43,7 +43,7 @@ export const assignPackage = asyncHandler(async (req: Request, res: Response) =>
     if (!userId) return sendError(res, 400, 'userId is required');
 
     const user = await User.findById(userId);
-    if (!user) return sendError(res, 'User not found', 404);
+    if (!user) return sendError(res, 404, 'User not found');
 
     let planData: any = {};
 
