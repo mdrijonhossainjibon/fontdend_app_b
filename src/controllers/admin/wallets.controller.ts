@@ -7,7 +7,7 @@ import { User } from '@/models/User';
 
 export const list = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
-  const users = await User.find({}).select('name email balance role isActive createdAt');
+  const users = await User.find({}).select('name email balance role status createdAt');
   const totalBalance = users.reduce((sum: number, u: any) => sum + (u.balance || 0), 0);
   sendSuccess(res, { wallets: users, totalBalance });
 });

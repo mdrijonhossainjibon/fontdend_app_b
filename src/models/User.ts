@@ -10,7 +10,7 @@ export interface IUser extends Document {
     name?: string
     twoFactorEnabled: boolean
     balance: number
-    isActive: boolean
+    status: string
     role: string
     oauthProvider?: string
     oauthId?: string
@@ -51,9 +51,10 @@ const UserSchema: Schema<IUser> = new Schema(
             type: Number,
             default: 0,
         },
-        isActive: {
-            type: Boolean,
-            default: true,
+        status: {
+            type: String,
+            enum: ['active', 'inactive'],
+            default: 'active',
         },
        role:{
         type: String,

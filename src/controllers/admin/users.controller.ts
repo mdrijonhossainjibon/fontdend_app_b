@@ -25,8 +25,8 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
     query.$or = [{ name: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }];
   }
   if (role) query.role = role;
-  if (status === 'active') query.isActive = true;
-  else if (status === 'inactive') query.isActive = false;
+  if (status === 'active') query.status = 'active';
+  else if (status === 'inactive') query.status = 'inactive';
 
   const [users, total] = await Promise.all([
     User.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('-password'),
@@ -40,17 +40,21 @@ export const getById = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
   const user = await User.findById(req.params.id).select('-password');
   if (!user) throw new ApiError(404, 'User not found');
-  sendSuccess(res, { user });
+
+  const packages = await Package.find({ userId: user._id }).lean();
+  const activities = await Activity.find({ userId: user._id }).sort({ createdAt: -1 }).limit(20).lean();
+
+  sendSuccess(res, { user, packages, activities });
 });
 
 export const update = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
-  const { name, email, role, isActive, balance, twoFactorEnabled } = req.body;
+  const { name, email, role, status, balance, twoFactorEnabled } = req.body;
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) updateData.email = email.toLowerCase();
   if (role !== undefined) updateData.role = role;
-  if (isActive !== undefined) updateData.isActive = isActive;
+  if (status !== undefined) updateData.status = status;
   if (balance !== undefined) updateData.balance = balance;
   if (twoFactorEnabled !== undefined) updateData.twoFactorEnabled = twoFactorEnabled;
 
@@ -78,10 +82,10 @@ export const toggleActive = asyncHandler(async (req: Request, res: Response) => 
   await connectDB();
   const user = await User.findById(req.params.id);
   if (!user) throw new ApiError(404, 'User not found');
-  user.isActive = !user.isActive;
+  user.status = user.status === 'active' ? 'inactive' : 'active';
   await user.save();
 
-  const action = user.isActive ? 'Enabled' : 'Disabled';
+  const action = user.status === 'active' ? 'Enabled' : 'Disabled';
   await logActivity({ userId: (req as any).user._id, action: `User ${action}`, type: 'admin', description: `${action} user: ${user.email}`, ip: getClientIp(req) });
-  sendSuccess(res, { message: `User ${action.toLowerCase()} successfully`, isActive: user.isActive });
+  sendSuccess(res, { message: `User ${action.toLowerCase()} successfully`, status: user.status });
 });

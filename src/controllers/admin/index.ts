@@ -17,4 +17,6 @@ export { sweepCrypto } from './crypto-sweep.controller';
 export { list as listDepositAddresses, update as updateDepositAddress, remove as removeDepositAddress, checkBalance as checkDepositAddressBalance } from './deposit-addresses.controller';
 export { list as listHealthStatuses, run as runHealthCheck } from './health-check.controller';
   
-export { list as listRedeemCodes, create as createRedeemCode, update as updateRedeemCode, remove as removeRedeemCode } from './redeem-codes.controller'; 
+export { list as listRedeemCodes, create as createRedeemCode, update as updateRedeemCode, remove as removeRedeemCode } from './redeem-codes.controller';
+
+export { list as listUserPackages, update as updateUserPackage, remove as removeUserPackage, assignPackage } from './user-packages.controller'; 

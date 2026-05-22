@@ -27,7 +27,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
   if (!user) throw new ApiError(401, 'Invalid email or password');
-  if (!user.isActive) throw new ApiError(403, 'Account is deactivated. Please contact support.');
+  if (user.status === 'inactive') throw new ApiError(403, 'Account is deactivated. Please contact support.');
 
   const isValid = await user.comparePassword(password);
   if (!isValid) throw new ApiError(401, 'Invalid email or password');
@@ -74,7 +74,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const referralCode = generateReferralCode(name);
-  const user = await User.create({ name, email: emailLower, password, twoFactorEnabled: false, balance: 0, isActive: true, role: 'user', lastLoginIp: currentIp, referralCode, referredBy });
+  const user = await User.create({ name, email: emailLower, password, twoFactorEnabled: false, balance: 0, status: 'active', role: 'user', lastLoginIp: currentIp, referralCode, referredBy });
 
   // Create referral record
   if (referredBy) {
@@ -134,7 +134,7 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = (req as any).user;
   sendSuccess(res, {
-    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role, twoFactorEnabled: user.twoFactorEnabled, isActive: user.isActive },
+    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
   });
 });
 

@@ -20,7 +20,7 @@ export const getDashboardStats = asyncHandler(async (req: any, res: Response) =>
     rawExtensions
   ] = await Promise.all([
     User.countDocuments({ role: 'user' }),
-    User.countDocuments({ role: 'user', isActive: true }),
+    User.countDocuments({ role: 'user', status: 'active' }),
     User.countDocuments({ role: 'solver' }),
     User.countDocuments({ isOnline: true, lastActive: { $gte: new Date(Date.now() - 5 * 60 * 1000) } }),
     (async () => {

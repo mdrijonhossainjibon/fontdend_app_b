@@ -67,7 +67,7 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
     });
   }
 
-  if (!user.isActive) throw new ApiError(403, 'Account is deactivated');
+  if (user.status === 'inactive') throw new ApiError(403, 'Account is deactivated');
 
   const { jwtToken } = createTokens({
     userId: user._id.toString(),
@@ -154,7 +154,7 @@ export const callback = asyncHandler(async (req, res) => {
     });
   }
 
-  if (!user.isActive) return res.redirect(env.FRONTEND_URL + '/auth/login?error=account_deactivated');
+  if (user.status === 'inactive') return res.redirect(env.FRONTEND_URL + '/auth/login?error=account_deactivated');
 
   const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', balance: user.balance }).jwtToken;
   res.cookie('oauth_state', '', { maxAge: 0, path: '/' });
