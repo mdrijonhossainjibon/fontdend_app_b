@@ -14,6 +14,12 @@ const SystemSettingSchema = new mongoose.Schema({
     ipWhitelist: { type: Boolean, default: false },
     sessionTimeout: { type: String, default: "30 minutes" },
 
+    // Cache Control
+    cacheControlAws: { type: Boolean, default: true },
+    cacheControlKbs: { type: Boolean, default: true },
+    cacheControlHcaptcha: { type: Boolean, default: true },
+    cacheControlKblogin: { type: Boolean, default: true },
+
     updatedAt: { type: Date, default: Date.now }
 })
 

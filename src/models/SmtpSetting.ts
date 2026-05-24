@@ -7,7 +7,7 @@ const SmtpSettingSchema = new mongoose.Schema({
     user: { type: String, required: true },
     pass: { type: String, required: true },
     from: { type: String, required: true },
-    isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     updatedAt: { type: Date, default: Date.now }
 })
 

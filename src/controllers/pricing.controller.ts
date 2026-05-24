@@ -4,6 +4,7 @@ import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { PricingPlan } from '@/models/PricingPlan';
 import { Package } from '@/models/Package';
+import { PromoOffer } from '@/models/PromoOffer';
 import { User } from '@/models/User';
 
 export const getPlans = asyncHandler(async (req: Request, res: Response) => {
@@ -80,4 +81,37 @@ export const subscribe = asyncHandler(async (req: Request, res: Response) => {
       startDate: startDate.toISOString(), endDate: endDate.toISOString(),
     },
   });
+});
+
+export const getOffers = asyncHandler(async (_req: Request, res: Response) => {
+  const promoOffers = await PromoOffer.find({ isActive: true })
+    .sort({ sortOrder: 1, createdAt: -1 })
+    .lean();
+
+  const planCodes = promoOffers.map((o: any) => o.pricingPlanCode);
+  const plans = await PricingPlan.find({ code: { $in: planCodes }, isActive: true }).lean();
+  const planMap = new Map(plans.map((p: any) => [p.code, p]));
+
+  const offers = promoOffers.map((offer: any) => {
+    const plan = planMap.get(offer.pricingPlanCode) as any;
+    return {
+      id: offer._id.toString(),
+      code: offer.pricingPlanCode,
+      type: plan?.type || 'count',
+      price: plan?.priceDisplay || '$0.00',
+      priceValue: plan?.price || 0,
+      validity: plan?.validity || '',
+      recognition: plan?.recognition || '',
+      offerTitle: offer.title,
+      offerBadge: offer.badge || '',
+      offerDescription: offer.description || '',
+      offerFeatures: offer.features || [],
+      offerHighlight: offer.highlight || '',
+      ...(plan?.type === 'count' && { count: plan.count }),
+      ...(plan?.type === 'daily' && { dailyLimit: plan.dailyLimit }),
+      ...(plan?.type === 'minute' && { rateLimit: plan.rateLimit }),
+    };
+  });
+
+  sendSuccess(res, { offers });
 });

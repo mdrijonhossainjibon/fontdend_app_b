@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import os from 'os';
+import { execSync } from 'child_process';
 import asyncHandler from '@/utils/asyncHandler';
 import { sendSuccess } from '@/utils/response';
 import { connectDB } from '@/config';
@@ -17,7 +19,7 @@ export const getDashboardStats = asyncHandler(async (req: any, res: Response) =>
     totalUsers, activeUsers, totalSolvers, onlineSessions,
     totalRevenue, todayRevenue, monthlyRevenue, activePackages,
     recentUsers, recentActivities, currentWeekSales,
-    rawExtensions
+    rawExtensions, rawRecentDeposits, totalDepositsCount, totalActivities, totalApiKeys, totalSolutions
   ] = await Promise.all([
     User.countDocuments({ role: 'user' }),
     User.countDocuments({ role: 'user', status: 'active' }),
@@ -52,7 +54,12 @@ export const getDashboardStats = asyncHandler(async (req: any, res: Response) =>
       });
       return weeklyData;
     })(),
-    Extension.find().sort({ createdAt: -1 }).limit(10).lean()
+    Extension.find().sort({ createdAt: -1 }).limit(10).lean(),
+    Deposit.find({ status: 'completed' }).sort({ createdAt: -1 }).limit(10).populate('userId', 'name email').lean(),
+    Deposit.countDocuments(),
+    Activity.countDocuments(),
+    ApiKey.countDocuments(),
+    Solution.countDocuments(),
   ]);
 
   const extensions = (rawExtensions || []).map((ext: any) => ({
@@ -60,17 +67,69 @@ export const getDashboardStats = asyncHandler(async (req: any, res: Response) =>
     downloadUrl: `${req.protocol}://${req.get('host')}/api/d/${ext.shortId}`
   }));
 
-  const totalActivities = await Activity.countDocuments();
-  const totalApiKeys = await ApiKey.countDocuments();
-  const totalDeposits = await Deposit.countDocuments();
+  // --- System Metrics ---
+  const cpus = os.cpus();
+  const cpuUsage = cpus.reduce((acc, cpu) => {
+    const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+    const idle = cpu.times.idle;
+    return acc + ((total - idle) / total) * 100;
+  }, 0) / cpus.length;
+
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const memUsagePct = (usedMem / totalMem) * 100;
+
+  let diskUsagePct = 0;
+  try {
+    if (process.platform === 'win32') {
+      const stdout = execSync(
+        `powershell -Command "Get-PSDrive C | Select-Object Used,Free | ConvertTo-Csv -NoTypeInformation"`,
+        { timeout: 5000 }
+      ).toString();
+      const lines = stdout.trim().split('\n');
+      if (lines.length > 1) {
+        const [usedStr, freeStr] = lines[1].split(',').map(s => s.replace(/"/g, ''));
+        const usedDisk = parseInt(usedStr, 10);
+        const freeDisk = parseInt(freeStr, 10);
+        const totalDisk = usedDisk + freeDisk;
+        if (totalDisk > 0) diskUsagePct = (usedDisk / totalDisk) * 100;
+      }
+    } else {
+      const stdout = execSync("df -B1 / | tail -1 | awk '{print $2,$3}'", { timeout: 3000 }).toString();
+      const [totalDisk, usedDisk] = stdout.trim().split(/\s+/).map(Number);
+      if (totalDisk > 0) diskUsagePct = (usedDisk / totalDisk) * 100;
+    }
+  } catch { /* keep 0 */ }
+
+  const cpuStatus = cpuUsage > 90 ? 'critical' : cpuUsage > 70 ? 'warning' : 'healthy';
+  const memStatus = memUsagePct > 90 ? 'critical' : memUsagePct > 70 ? 'warning' : 'healthy';
+  const diskStatus = diskUsagePct > 90 ? 'critical' : diskUsagePct > 70 ? 'warning' : 'healthy';
+
+  const recentDeposits = (rawRecentDeposits || []).map((d: any) => ({
+    _id: d._id,
+    user: d.userId?.name || 'Unknown',
+    email: d.userId?.email || '',
+    amount: d.amount,
+    amountUSD: d.amountUSD,
+    cryptoName: d.cryptoName,
+    status: d.status,
+    createdAt: d.createdAt,
+  }));
 
   sendSuccess(res, {
     users: { total: totalUsers, active: activeUsers, solvers: totalSolvers, online: onlineSessions },
     revenue: { total: totalRevenue, today: todayRevenue, monthly: monthlyRevenue },
     packages: { active: activePackages },
-    system: { activities: totalActivities, apiKeys: totalApiKeys, deposits: totalDeposits, solutions: await Solution.countDocuments() },
+    system: { activities: totalActivities, apiKeys: totalApiKeys, deposits: totalDepositsCount, solutions: totalSolutions },
     recentUsers, recentActivities, weeklySales: currentWeekSales,
-    extensions
+    extensions,
+    recentDeposits,
+    systemMetrics: {
+      cpu: { status: cpuStatus, usage: Math.round(cpuUsage), cores: cpus.length, temp: 0 },
+      memory: { status: memStatus, usage: Math.round(memUsagePct), used: +(usedMem / (1024 * 1024 * 1024)).toFixed(1), total: +(totalMem / (1024 * 1024 * 1024)).toFixed(1) },
+      storage: { status: diskStatus, usage: Math.round(diskUsagePct) },
+    },
   });
 });
 

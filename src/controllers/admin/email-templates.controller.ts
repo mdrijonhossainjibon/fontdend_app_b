@@ -8,23 +8,23 @@ import { EmailTemplate } from '@/models/EmailTemplate';
 export const list = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
   const templates = await EmailTemplate.find().sort({ name: 1 }).lean();
-  sendSuccess(res, { emailTemplates: templates });
+  sendSuccess(res, { templates });
 });
 
 export const create = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
-  const { name, subject, body, variables } = req.body;
-  if (!name || !subject || !body) throw new ApiError(400, 'Name, subject, and body are required');
+  const { name, subject, content, description } = req.body;
+  if (!name || !subject || !content) throw new ApiError(400, 'Name, subject, and content are required');
 
-  const template = await EmailTemplate.create({ name, subject, body, variables: variables || [] });
-  sendSuccess(res, { message: 'Email template created', data: template }, 201);
+  const template = await EmailTemplate.create({ name, subject, content, description: description || '' });
+  sendSuccess(res, { message: 'Email template created', template }, 201);
 });
 
 export const update = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
   const template = await EmailTemplate.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
   if (!template) throw new ApiError(404, 'Email template not found');
-  sendSuccess(res, { message: 'Email template updated', data: template });
+  sendSuccess(res, { message: 'Email template updated', template });
 });
 
 export const remove = asyncHandler(async (req: Request, res: Response) => {

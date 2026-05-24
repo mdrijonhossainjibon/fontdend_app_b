@@ -13,7 +13,7 @@ export interface IPricingPlan extends Document {
     dailyLimit?: number   // For daily type
     rateLimit?: number    // For minute type
     // Metadata
-    isActive: boolean
+    status: string
     isPromo: boolean
     sortOrder: number
     createdAt: Date
@@ -73,9 +73,10 @@ const PricingPlanSchema: Schema<IPricingPlan> = new Schema(
             min: 0,
         },
         // Metadata
-        isActive: {
-            type: Boolean,
-            default: true,
+        status: {
+            type: String,
+            enum: ['active', 'inactive'],
+            default: 'active',
         },
         isPromo: {
             type: Boolean,
@@ -92,7 +93,7 @@ const PricingPlanSchema: Schema<IPricingPlan> = new Schema(
 )
 
 // Indexes for better query performance
-PricingPlanSchema.index({ type: 1, isActive: 1 })
+PricingPlanSchema.index({ type: 1, status: 1 })
 PricingPlanSchema.index({ sortOrder: 1 })
 
 // Virtual for formatted limit value

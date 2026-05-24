@@ -10,7 +10,7 @@ import { connectDB } from '@/config';
 import {
   sendErc20, sendNativeToken, getERC20Decimals, getERC20Balance, getNativeBalance,
   formatTokenBalance, formatNativeBalance,
-} from 'auth-fingerprint';
+} from '@/lib/web3';
 
 async function getGasPrice(rpcUrl: string): Promise<bigint> {
   try {

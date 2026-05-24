@@ -95,9 +95,11 @@ router.get('/settings/site', admin.getSiteSettings);
 router.patch('/settings/site', admin.updateSiteSettings);
 router.get('/settings/smtp', admin.getSmtpSettings);
 router.patch('/settings/smtp', admin.updateSmtpSettings);
+router.post('/settings/smtp/test', admin.testSmtpSettings);
 // Legacy route aliases (system/* -> settings/*)
 router.get('/system/smtp', admin.getSmtpSettings);
 router.patch('/system/smtp', admin.updateSmtpSettings);
+router.post('/system/smtp/test', admin.testSmtpSettings);
 
 // �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 // Database
@@ -165,6 +167,20 @@ router.post('/redeem-codes', admin.createRedeemCode);
 router.patch('/redeem-codes', admin.updateRedeemCode);
 router.delete('/redeem-codes', admin.removeRedeemCode);
 
+// Promo Offers
+router.get('/promo-offers', admin.listPromoOffers);
+router.post('/promo-offers', admin.createPromoOffer);
+router.patch('/promo-offers', admin.updatePromoOffer);
+router.delete('/promo-offers', admin.removePromoOffer);
+
+// Permissions / Roles
+router.get('/permissions', admin.listPermissions);
+router.get('/permissions/roles', admin.listRoles);
+router.post('/permissions/roles', admin.createRole);
+router.patch('/permissions/roles', admin.updateRole);
+router.delete('/permissions/roles', admin.removeRole);
+router.get('/permissions/users', admin.listPermissionUsers);
+router.patch('/permissions/users', admin.updateUserRole);
 
 // �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 router.get('/ai-training', admin.listAiTrainings);

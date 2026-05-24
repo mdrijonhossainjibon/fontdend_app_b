@@ -4,7 +4,8 @@ export { list as listWallets, create as createWallet, update as updateWallet, re
 export { list as listDeposits, approve as approveDeposit, reject as rejectDeposit } from './deposits.controller';
 export { list as listExtensions, create as createExtension, update as updateExtension, remove as removeExtension, scan as scanExtension } from './extensions.controller';
 export { list as listPricingPlans, create as createPricingPlan, update as updatePricingPlan, remove as removePricingPlan } from './pricing-plans.controller';
-export { getSiteSettings, updateSiteSettings, getSmtpSettings, updateSmtpSettings } from './settings.controller';
+export { listRoles, createRole, updateRole, removeRole, listUsers as listPermissionUsers, updateUserRole, listPermissions } from './permissions.controller';
+export { getSiteSettings, updateSiteSettings, getSmtpSettings, updateSmtpSettings, testSmtpSettings } from './settings.controller';
 export { getStats as getDbStats, cleanActivity as cleanDbActivity } from './database.controller';export { list as listDatabaseCollections, validate as validateCollection, repair as repairCollection, deleteIndex as deleteDatabaseIndex } from './database.controller';
 export { check as healthCheck } from './health.controller';
 export { list as listBotEndpoints, create as createBotEndpoint, update as updateBotEndpoint, remove as removeBotEndpoint, testEndpoint } from './bot-endpoints.controller';
@@ -18,5 +19,6 @@ export { list as listDepositAddresses, update as updateDepositAddress, remove as
 export { list as listHealthStatuses, run as runHealthCheck } from './health-check.controller';
   
 export { list as listRedeemCodes, create as createRedeemCode, update as updateRedeemCode, remove as removeRedeemCode } from './redeem-codes.controller';
+export { listPromoOffers, createPromoOffer, updatePromoOffer, removePromoOffer } from './promo-offers.controller';
 
 export { list as listUserPackages, update as updateUserPackage, remove as removeUserPackage, assignPackage } from './user-packages.controller'; 

@@ -15,7 +15,7 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
   const count = await PricingPlan.countDocuments({ type: 'count' });
   const daily = await PricingPlan.countDocuments({ type: 'daily' });
   const minute = await PricingPlan.countDocuments({ type: 'minute' });
-  const active = await PricingPlan.countDocuments({ isActive: true });
+  const active = await PricingPlan.countDocuments({ status: 'active' });
   sendSuccess(res, {
     plans,
     stats: { total, count, daily, minute, active },
@@ -35,7 +35,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     count: req.body.count ? Number(req.body.count) : undefined,
     dailyLimit: req.body.dailyLimit ? Number(req.body.dailyLimit) : undefined,
     rateLimit: req.body.rateLimit ? Number(req.body.rateLimit) : undefined,
-    isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+    status: req.body.status || 'active',
   });
   sendSuccess(res, { plan }, 201);
 });
@@ -58,7 +58,7 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
   if (updateData.count !== undefined) updateFields.count = Number(updateData.count);
   if (updateData.dailyLimit !== undefined) updateFields.dailyLimit = Number(updateData.dailyLimit);
   if (updateData.rateLimit !== undefined) updateFields.rateLimit = Number(updateData.rateLimit);
-  if (updateData.isActive !== undefined) updateFields.isActive = updateData.isActive;
+  if (updateData.status !== undefined) updateFields.status = updateData.status;
   await PricingPlan.findByIdAndUpdate(planId, { $set: updateFields });
   sendSuccess(res, { message: 'Pricing plan updated' });
 });

@@ -6,7 +6,7 @@ import { CryptoConfig } from '@/models/CryptoConfig';
 import { DepositAddress } from '@/models/DepositAddress';
 import { Deposit } from '@/models/Deposit';
 import { User } from '@/models/User';
-import { getDepositHistory, getERC20Decimals, formatTokenBalance } from 'auth-fingerprint';
+import { getDepositHistory, getERC20Decimals, formatTokenBalance } from '@/lib/web3';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
