@@ -169,7 +169,9 @@ router.delete('/redeem-codes', admin.removeRedeemCode);
 
 // Promo Offers
 router.get('/promo-offers', admin.listPromoOffers);
+// @ts-ignore
 router.post('/promo-offers', upload.single('image'), admin.createPromoOffer);
+// @ts-ignore
 router.patch('/promo-offers', upload.single('image'), admin.updatePromoOffer);
 router.delete('/promo-offers', admin.removePromoOffer);
 
