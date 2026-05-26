@@ -9,6 +9,7 @@ export interface IPromoOffer extends Document {
     pricingPlanCode: string
     isActive: boolean
     sortOrder: number
+    image: string
     createdAt: Date
     updatedAt: Date
 }
@@ -50,6 +51,10 @@ const PromoOfferSchema: Schema<IPromoOffer> = new Schema(
         sortOrder: {
             type: Number,
             default: 0,
+        },
+        image: {
+            type: String,
+            default: '',
         },
     },
     { timestamps: true }

@@ -9,7 +9,7 @@ import { User } from '@/models/User';
 
 export const getPlans = asyncHandler(async (req: Request, res: Response) => {
   const type = req.query.type as string;
-  const query: Record<string, unknown> = { isActive: true };
+  const query: Record<string, unknown> = { status: 'active' };
   if (type && type !== 'all') query.type = type;
 
   const pricingPlans = await PricingPlan.find(query)
@@ -34,7 +34,7 @@ export const subscribe = asyncHandler(async (req: Request, res: Response) => {
   if (!planId && !planCode) throw new ApiError(400, 'Plan ID or code is required');
 
   const query = planId ? { _id: planId } : { code: planCode.toUpperCase() };
-  const pricingPlan = await PricingPlan.findOne({ ...query, isActive: true });
+  const pricingPlan = await PricingPlan.findOne({ ...query, status: 'active' });
   if (!pricingPlan) throw new ApiError(404, 'Pricing plan not found or inactive');
 
   const fullUser = await User.findById((req as any).user._id);
@@ -89,7 +89,7 @@ export const getOffers = asyncHandler(async (_req: Request, res: Response) => {
     .lean();
 
   const planCodes = promoOffers.map((o: any) => o.pricingPlanCode);
-  const plans = await PricingPlan.find({ code: { $in: planCodes }, isActive: true }).lean();
+  const plans = await PricingPlan.find({ code: { $in: planCodes }, status: 'active' }).lean();
   const planMap = new Map(plans.map((p: any) => [p.code, p]));
 
   const offers = promoOffers.map((offer: any) => {
@@ -107,6 +107,7 @@ export const getOffers = asyncHandler(async (_req: Request, res: Response) => {
       offerDescription: offer.description || '',
       offerFeatures: offer.features || [],
       offerHighlight: offer.highlight || '',
+      imageUrl: offer.image || '',
       ...(plan?.type === 'count' && { count: plan.count }),
       ...(plan?.type === 'daily' && { dailyLimit: plan.dailyLimit }),
       ...(plan?.type === 'minute' && { rateLimit: plan.rateLimit }),
