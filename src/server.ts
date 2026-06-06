@@ -13,7 +13,7 @@ async function bootstrap(): Promise<void> {
 
   initializeSocket(httpServer);
 
-  const PORT = parseInt(process.env.PORT || '3000', 10);
+  const PORT = parseInt(process.env.PORT || '8888', 10);
   const HOST = process.env.HOST || '0.0.0.0';
 
   httpServer.listen(PORT, HOST, () => {
