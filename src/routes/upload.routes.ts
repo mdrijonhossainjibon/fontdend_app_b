@@ -6,8 +6,7 @@ import asyncHandler from '@/utils/asyncHandler';
 import { sendSuccess } from '@/utils/response';
 import { authMiddleware } from '@/middlewares/auth.middleware';
 
-import axios from 'axios';
-import FormData from 'form-data';
+import { API_CALL } from 'auth-fingerprint';
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || './uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -42,19 +41,25 @@ router.post('/model-to-bot', authMiddleware, upload.single('file'), asyncHandler
   }
 
   try {
+    const url = new URL(botUrl);
+    const { default: FormData } = await import('form-data');
     const form = new FormData();
     form.append('file', fs.createReadStream(file.path), {
       filename: file.originalname,
       contentType: file.mimetype,
     });
 
-    // Forward to bot endpoint
-    const response = await axios.post(botUrl, form, {
+    const formHeaders = form.getHeaders();
+
+    // Forward to bot endpoint using auth-fingerprint API_CALL
+    const response = await API_CALL({
+      method: 'POST',
+      url: url.pathname + url.search,
+      baseURL: url.origin,
+      body: form,
       headers: {
-        ...form.getHeaders(),
+        ...(formHeaders as Record<string, string>),
       },
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity,
     });
 
     // Clean up uploaded file
@@ -63,7 +68,7 @@ router.post('/model-to-bot', authMiddleware, upload.single('file'), asyncHandler
     res.json({
       success: true,
       message: 'Model forwarded to bot successfully',
-      botResponse: response.data,
+      botResponse: response.response,
     });
   } catch (error: any) {
     // Clean up on error
@@ -73,7 +78,7 @@ router.post('/model-to-bot', authMiddleware, upload.single('file'), asyncHandler
     res.status(500).json({
       success: false,
       message: 'Failed to forward model to bot',
-      error: error.response?.data || error.message,
+      error: error.message,
     });
   }
 }));

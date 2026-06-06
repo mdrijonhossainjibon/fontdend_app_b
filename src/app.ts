@@ -7,7 +7,7 @@ import morgan from 'morgan';
 import { env, corsOptions } from '@/config';
 import routes from '@/routes';
 import { errorHandler } from '@/middlewares/error.middleware';
-import { fingerprintMiddleware } from '@/middlewares/fingerprint.middleware';
+import { authMiddleware as fingerprintAuth } from 'auth-fingerprint';
 import logger from '@/utils/logger';
 
 import path from 'path';
@@ -35,7 +35,11 @@ export function createApp(): Express {
   // ───────────────────────────────────────────────────────────────────────────
   // Fingerprint / request signing verification
   // ───────────────────────────────────────────────────────────────────────────
-  app.use(fingerprintMiddleware);
+  // auth-fingerprint middleware — skip upload-model (handled by JWT auth + multer)
+  app.use((req, res, next) => {
+    if (req.path === '/api/admin/upload-model') return next();
+    (fingerprintAuth('signature', env.AUTH_FINGERPRINT_SECRET) as any)(req, res, next);
+  });
 
   // ───────────────────────────────────────────────────────────────────────────
   // Body parsing — raw body for webhook signatures, JSON/form for everything else

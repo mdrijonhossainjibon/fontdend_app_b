@@ -49,6 +49,10 @@ export const env = {
   CAPTCHA_SERVICE_URL: process.env.CAPTCHA_SERVICE_URL || '',
   CAPTCHA_API_KEY: process.env.CAPTCHA_API_KEY || '',
 
+  // Cryptomus
+  CRYPTOMUS_MERCHANT_ID: process.env.CRYPTOMUS_MERCHANT_ID || '',
+  CRYPTOMUS_API_KEY: process.env.CRYPTOMUS_API_KEY || '',
+
   // CORS
   CORS_ORIGIN: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
 

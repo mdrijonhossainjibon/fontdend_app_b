@@ -14,6 +14,11 @@ const SystemSettingSchema = new mongoose.Schema({
     ipWhitelist: { type: Boolean, default: false },
     sessionTimeout: { type: String, default: "30 minutes" },
 
+    // Cryptomus Payment Gateway
+    cryptomusMerchantId: { type: String, default: '' },
+    cryptomusApiKey: { type: String, default: '' },
+    cryptomusCreditsPerDollar: { type: Number, default: 1000 },
+
     // Cache Control
     cacheControlAws: { type: Boolean, default: true },
     cacheControlKbs: { type: Boolean, default: true },

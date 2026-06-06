@@ -90,6 +90,34 @@ export const deleteApiKey = asyncHandler(async (req: Request, res: Response) => 
   sendSuccess(res, { message: 'API key deleted successfully' });
 });
 
+export const regenerateApiKey = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user._id;
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(400, 'Key ID is required');
+
+  const apiKey = await ApiKey.findOne({ _id: id, userId });
+  if (!apiKey) throw new ApiError(404, 'API key not found');
+
+  const newKey = `pk_live_${Buffer.from(Math.random().toString(36).substring(2) + Date.now().toString(36)).toString('hex').substring(0, 24)}`;
+  apiKey.key = newKey;
+  apiKey.lastUsed = null;
+  apiKey.usageCount = 0;
+  await apiKey.save();
+
+  await logActivity({ userId: userId.toString(), action: 'API Key Regenerated', type: 'api', description: `Regenerated API key: ${apiKey.name}`, ip: getClientIp(req) });
+
+  emitDashboardUpdate(userId.toString(), { type: 'api-keys' });
+
+  sendSuccess(res, {
+    message: 'API key regenerated successfully',
+    apiKey: {
+      id: apiKey._id, name: apiKey.name, key: `${newKey.substring(0, 20)}...${newKey.substring(newKey.length - 6)}`,
+      fullKey: newKey, status: apiKey.status, lastUsed: 'Never', createdAt: apiKey.createdAt,
+    },
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Packages
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +167,10 @@ export const cancelPackage = asyncHandler(async (req: Request, res: Response) =>
 export const getActivity = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
 
+  
+
   const activities = await Activity.find({ userId }).sort({ createdAt: -1 }).limit(50);
+ 
   sendSuccess(res, {
     activities: activities.map((a: any) => ({
       id: a._id.toString(), action: a.action, type: a.type, description: a.description,

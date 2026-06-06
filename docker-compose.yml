@@ -1,17 +1,4 @@
-version: '3.8'
-
 services:
-  mongodb:
-    image: mongo:7
-    container_name: captchamaster-mongodb
-    restart: unless-stopped
-    ports:
-      - '27017:27017'
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      MONGO_INITDB_DATABASE: main_backend
-
   api:
     build:
       context: .
@@ -19,21 +6,29 @@ services:
     container_name: captchamaster-api
     restart: unless-stopped
     ports:
-      - '3001:3001'
-    depends_on:
-      - mongodb
+      - '8000:8000'
     environment:
       NODE_ENV: production
-      MONGO_URI: mongodb://mongodb:27017/main_backend
-      PORT: 3001
+      MONGO_URI: ${MONGO_URI}
+      PORT: 8000
       HOST: 0.0.0.0
       JWT_SECRET: ${JWT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_FINGERPRINT_SECRET: ${AUTH_FINGERPRINT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      CRYPTOMUS_API_KEY: ${CRYPTOMUS_API_KEY}
+      CRYPTOMUS_MERCHANT_ID: ${CRYPTOMUS_MERCHANT_ID}
     volumes:
       - api_uploads:/app/uploads
       - api_logs:/app/logs
 
 volumes:
-  mongodb_data:
   api_uploads:
   api_logs:

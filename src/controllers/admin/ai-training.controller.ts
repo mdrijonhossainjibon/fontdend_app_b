@@ -3,9 +3,8 @@ import asyncHandler from '@/utils/asyncHandler';
 import { sendSuccess } from '@/utils/response';
 import { connectDB } from '@/config';
 
-import axios from 'axios';
+import { API_CALL } from 'auth-fingerprint';
 import FormData from 'form-data';
-import fs from 'fs';
 
 export const uploadModelToBot = asyncHandler(async (req: any, res: any) => {
   const file = req.file;
@@ -26,25 +25,36 @@ export const uploadModelToBot = asyncHandler(async (req: any, res: any) => {
       contentType: file.mimetype,
     });
 
-    const response = await axios.post(botUrl, form, {
+    const url = new URL(botUrl);
+    const result = await API_CALL({
+      method: 'POST',
+      url: url.pathname + url.search,
+      baseURL: url.origin,
+      body: form,
       headers: {
-        ...form.getHeaders(),
+        ...(form.getHeaders() as Record<string, string>),
       },
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity,
     });
+
+    if (result.status >= 400) {
+      return res.status(502).json({
+        success: false,
+        message: 'Failed to forward model to bot',
+        error: result.response,
+      });
+    }
 
     res.json({
       success: true,
       message: 'Model uploaded and forwarded successfully',
-      botResponse: response.data,
+      botResponse: result.response,
     });
   } catch (error: any) {
     console.error('Forwarding error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to forward model to bot',
-      error: error.response?.data || error.message,
+      error: error.message,
     });
   }
 });

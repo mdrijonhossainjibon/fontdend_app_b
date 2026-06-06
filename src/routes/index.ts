@@ -12,6 +12,7 @@ import webhookRoutes from './webhook.routes';
 import extensionsRoutes from './extensions.routes';
 import topupRoutes from './topup.routes';
 import referralRoutes from './referral.routes';
+import cryptomusRoutes from './cryptomus.routes';
 import { Extension } from '../models/Extension';
 
 const router = Router();
@@ -53,5 +54,6 @@ router.use('/webhook', webhookRoutes);
 router.use('/extensions', extensionsRoutes);
 router.use('/topup', topupRoutes);
 router.use('/referrals', referralRoutes);
+router.use('/cryptomus', cryptomusRoutes);
 
 export default router;

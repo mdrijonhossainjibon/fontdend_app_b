@@ -2,4 +2,3 @@ export { authMiddleware, optionalAuthMiddleware, adminMiddleware, AuthRequest } 
 export { errorHandler } from './error.middleware';
 export { validate } from './validate.middleware';
 export { createRateLimiter, authRateLimiter, apiRateLimiter } from './rate-limit.middleware';
-export { fingerprintMiddleware, FingerprintRequest } from './fingerprint.middleware';

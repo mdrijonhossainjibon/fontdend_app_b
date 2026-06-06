@@ -53,8 +53,15 @@ export const remove = asyncHandler(async (req: Request, res: Response) => {
 
   // Handle clear all
   if (req.query.clearAll === 'true') {
-    await Solution.deleteMany({});
-    sendSuccess(res, { message: 'All solutions cleared' });
+    const filter: any = {};
+    if (req.query.service && String(req.query.service) !== '') {
+      filter.service = String(req.query.service);
+    }
+    if (req.query.type && String(req.query.type) !== '') {
+      filter.type = String(req.query.type);
+    }
+    await Solution.deleteMany(filter);
+    sendSuccess(res, { message: 'Solutions cleared' });
     return;
   }
 

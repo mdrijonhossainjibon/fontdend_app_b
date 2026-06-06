@@ -10,11 +10,12 @@ export interface IDeposit extends Document {
     amountUSD: number
     txHash?: string
     address: string
-    status: 'pending' | 'confirming' | 'completed' | 'failed'
+    status: 'pending' | 'confirming' | 'completed' | 'failed' | 'expired' | 'rejected' | 'approved'
     confirmations: number
     requiredConfirmations: number
     fee: string
     notes?: string
+    expiresAt?: Date
     createdAt: Date
     updatedAt: Date
 }
@@ -62,7 +63,7 @@ const DepositSchema: Schema<IDeposit> = new Schema(
         },
         status: {
             type: String,
-            enum: ['pending', 'confirming', 'completed', 'failed'],
+            enum: ['pending', 'confirming', 'completed', 'failed', 'expired', 'rejected', 'approved'],
             default: 'pending',
             index: true,
         },
@@ -80,6 +81,9 @@ const DepositSchema: Schema<IDeposit> = new Schema(
         },
         notes: {
             type: String,
+        },
+        expiresAt: {
+            type: Date,
         },
     },
     {
