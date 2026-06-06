@@ -37,17 +37,20 @@ export const uploadModelToBot = asyncHandler(async (req: any, res: any) => {
     });
 
     if (result.status >= 400) {
+      const errMsg = typeof result.response === 'object'
+        ? (result.response as any)?.message || (result.response as any)?.error || JSON.stringify(result.response)
+        : String(result.response || 'Unknown bot error');
       return res.status(502).json({
         success: false,
         message: 'Failed to forward model to bot',
-        error: result.response,
+        error: errMsg,
       });
     }
 
     res.json({
       success: true,
       message: 'Model uploaded and forwarded successfully',
-      botResponse: result.response,
+      botResponse: typeof result.response === 'object' ? JSON.stringify(result.response) : result.response,
     });
   } catch (error: any) {
     console.error('Forwarding error:', error.message);

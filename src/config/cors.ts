@@ -2,8 +2,9 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:3001',
-  'https://app.example.com',
-  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  'https://captchamaster.org',
+  'https://www.captchamaster.org'
+
 ];
 
 export const corsOptions = {
