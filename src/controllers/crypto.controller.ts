@@ -6,7 +6,6 @@ import { CryptoConfig } from '@/models/CryptoConfig';
 import { DepositAddress } from '@/models/DepositAddress';
 import { Deposit } from '@/models/Deposit';
 import { User } from '@/models/User';
-import { getDepositHistory, getERC20Decimals, formatTokenBalance } from '@/lib/web3';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
@@ -125,49 +124,6 @@ export const getAddress = asyncHandler(async (req: Request, res: Response) => {
       fee: network.fee, confirmations: network.confirmations,
     },
   });
-});
-
-export const checkDeposits = asyncHandler(async (req: Request, res: Response) => {
-  const address = req.query.address as string;
-  if (!address) throw new ApiError(400, 'Address is required');
-
-  const depAddr = await DepositAddress.findOne({ userId: (req as any).user._id, address, isActive: true });
-  const newlyDetected: any[] = [];
-
-  if (depAddr) {
-    const config = await CryptoConfig.findOne({ id: depAddr.cryptoId, isActive: true });
-    if (config) {
-      const network = config.networks.find((n: any) => n.id === depAddr.networkId);
-      if (network?.rpcUrl && network.address) {
-        try {
-          const data = await getDepositHistory(network.address, depAddr.address, network.rpcUrl);
-          const decimals = await getERC20Decimals(network.rpcUrl, network.address);
-
-          for (const tx of data) {
-            const existing = await Deposit.findOne({ txHash: tx.txHash });
-            if (existing) continue;
-
-            const amountNum = Number(formatTokenBalance(tx.amount, decimals));
-            await User.findByIdAndUpdate((req as any).user._id, { $inc: { balance: amountNum } });
-
-            const deposit = await Deposit.create({
-              userId: (req as any).user._id, cryptoId: depAddr.cryptoId, cryptoName: config.name,
-              networkId: depAddr.networkId, networkName: network.name,
-              amount: amountNum, amountUSD: amountNum, address: depAddr.address,
-              txHash: tx.txHash, status: 'completed', confirmations: network.confirmations,
-              requiredConfirmations: network.confirmations, fee: network.fee,
-              notes: 'Incremental deposit detected via real-time polling',
-            });
-            newlyDetected.push(deposit);
-          }
-        } catch (rpcError) {
-          console.error(`RPC error for ${depAddr.address} on ${network.name}:`, rpcError);
-        }
-      }
-    }
-  }
-
-  sendSuccess(res, { data: newlyDetected });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -4,6 +4,11 @@ import mongoose, { Schema, Document, Model } from 'mongoose'
 export interface INetwork {
     id: string
     name: string
+    fee?: string
+    minDeposit?: string
+    confirmations?: number
+    address?: string
+    rpcUrl?: string
 }
 
 // Interface for Crypto

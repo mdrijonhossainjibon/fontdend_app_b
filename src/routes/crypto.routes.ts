@@ -15,7 +15,6 @@ router.delete('/config', authMiddleware, cryptoCtrl.deleteConfig);
 // Deposits
 router.get('/deposits', authMiddleware, cryptoCtrl.getDeposits);
 router.post('/deposits', authMiddleware, cryptoCtrl.createDeposit);
-router.get('/deposits/check', authMiddleware, cryptoCtrl.checkDeposits);
 
 // Payouts
 router.get('/payout', authMiddleware, cryptoCtrl.getPayouts);
