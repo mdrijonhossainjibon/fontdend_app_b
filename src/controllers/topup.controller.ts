@@ -8,6 +8,7 @@ import { Transaction } from '@/models/Transaction';
 import { Deposit } from '@/models/Deposit';
 import { PromoCode } from '@/models/PromoCode';
 import { SystemSetting } from '@/models/SystemSetting';
+import { PricingPlan } from '@/models/PricingPlan';
 import { createInvoice as cryptomusCreateInvoice } from '@/services/cryptomus';
 
 // GET /topup/active-package
@@ -107,10 +108,10 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
 
   if (!code || !code.trim()) throw new ApiError(400, 'Code is required');
 
-  
+  const normalizedCode = code.trim().toUpperCase();
 
-  // Look up promo code in database
-  const promo = await PromoCode.findOne({ code  ,  isActive: true });
+  // Look up promo code in database (normalized to uppercase)
+  const promo = await PromoCode.findOne({ code: normalizedCode, isActive: true });
   if (!promo) throw new ApiError(400, 'Invalid or expired promo code');
 
   // Check expiry
@@ -127,10 +128,77 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
   const alreadyRedeemed = await Transaction.findOne({
     userId,
     type: 'redeem',
-    meta: code
+    meta: normalizedCode
   });
   if (alreadyRedeemed) throw new ApiError(400, 'Promo code already redeemed');
 
+  // If code has a packageId, assign that PricingPlan to user
+  let pkgInfo = null;
+  if (promo.packageId) {
+    const plan: any = await PricingPlan.findById(promo.packageId).lean();
+
+    if (!plan) throw new ApiError(400, 'Linked package not found');
+
+    // Create a new Package from the PricingPlan
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + (plan.validityDays || 30));
+
+    const userPackage = await Package.create({
+      userId,
+      packageCode: plan.code,
+      type: plan.type,
+      name: plan.code,
+      price: plan.price || 0,
+      billingCycle: 'monthly',
+      credits: plan.count || 0,
+      creditsUsed: 0,
+      features: [],
+      status: 'active',
+      autoRenew: false,
+      startDate: now,
+      endDate,
+    });
+
+    // Deactivate any existing active packages
+    await Package.updateMany(
+      { userId, status: 'active', _id: { $ne: userPackage._id } },
+      { $set: { status: 'cancelled' } }
+    );
+
+    // Increment usage counter
+    promo.currentUses += 1;
+    await promo.save();
+
+    // Create transaction
+    await Transaction.create({
+      userId,
+      type: 'redeem',
+      credits: plan.count || 0,
+      label: `Package: ${plan.code}`,
+      meta: normalizedCode,
+    });
+
+    pkgInfo = {
+      code: plan.code,
+      name: plan.code,
+      type: plan.type,
+      credits: plan.count || 0,
+      validityDays: plan.validityDays,
+      recognition: plan.recognition,
+    };
+
+    return sendSuccess(res, {
+      data: {
+        creditsAdded: plan.count || 0,
+        totalCredits: userPackage.credits,
+        code: normalizedCode,
+        package: pkgInfo,
+      },
+    });
+  }
+
+  // Default: add credits to existing active package
   const activePackage = await Package.findOne({
     userId,
     status: 'active',
@@ -152,14 +220,14 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
     type: 'redeem',
     credits: promo.credits,
     label: 'Promo Code',
-    meta: code,
+    meta: normalizedCode,
   });
 
   sendSuccess(res, {
     data: {
       creditsAdded: promo.credits,
       totalCredits: activePackage.credits,
-      code ,
+      code: normalizedCode,
     },
   });
 });

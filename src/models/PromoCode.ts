@@ -8,6 +8,7 @@ export interface IPromoCode extends Document {
   expiresAt: Date | null;
   isActive: boolean;
   createdAt: Date;
+  packageId: mongoose.Types.ObjectId | null;
 }
 
 const PromoCodeSchema = new Schema<IPromoCode>(
@@ -18,6 +19,7 @@ const PromoCodeSchema = new Schema<IPromoCode>(
     currentUses: { type: Number, default: 0 },
     expiresAt: { type: Date, default: null },
     isActive: { type: Boolean, default: true },
+    packageId: { type: Schema.Types.ObjectId, ref: 'PricingPlan', default: null },
   },
   { timestamps: true }
 );

@@ -113,6 +113,11 @@ router.get('/database', admin.listDatabaseCollections);
 router.post('/database/validate', admin.validateCollection);
 router.post('/database/repair', admin.repairCollection);
 router.post('/database/delete-index', admin.deleteDatabaseIndex);
+// ─── Database Transfer ────────────────────────────────────
+router.get('/database/info', admin.getDbInfo);
+router.post('/database/connect', admin.connectTarget);
+router.post('/database/transfer', admin.transferDatabases);
+
 
 // �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 // Health
