@@ -8,7 +8,7 @@ import FormData from 'form-data';
 
 export const uploadModelToBot = asyncHandler(async (req: any, res: any) => {
   const file = req.file;
-  const { botUrl } = req.body;
+  const { botUrl, modelType, botEndpointId } = req.body;
 
   if (!file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -24,6 +24,8 @@ export const uploadModelToBot = asyncHandler(async (req: any, res: any) => {
       filename: file.originalname,
       contentType: file.mimetype,
     });
+    if (modelType) form.append('modelType', modelType);
+    if (botEndpointId) form.append('botEndpointId', botEndpointId);
 
     const url = new URL(botUrl);
     const result = await API_CALL({
@@ -35,7 +37,7 @@ export const uploadModelToBot = asyncHandler(async (req: any, res: any) => {
         ...(form.getHeaders() as Record<string, string>),
       },
     });
-
+    
     if (result.status >= 400) {
       const errMsg = typeof result.response === 'object'
         ? (result.response as any)?.message || (result.response as any)?.error || JSON.stringify(result.response)

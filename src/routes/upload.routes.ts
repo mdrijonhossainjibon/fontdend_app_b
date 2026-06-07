@@ -62,6 +62,7 @@ router.post('/model-to-bot', authMiddleware, upload.single('file'), asyncHandler
       },
     });
 
+ 
     // Clean up uploaded file
     fs.unlinkSync(file.path);
 
@@ -69,6 +70,7 @@ router.post('/model-to-bot', authMiddleware, upload.single('file'), asyncHandler
       success: true,
       message: 'Model forwarded to bot successfully',
       botResponse: response.response,
+     
     });
   } catch (error: any) {
     // Clean up on error
