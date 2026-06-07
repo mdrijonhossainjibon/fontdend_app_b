@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getActivePackage,
+  getPendingDeposit,
   buyCredits,
   redeemCode,
   getHistory,
@@ -12,6 +13,7 @@ import { authMiddleware } from '@/middlewares/auth.middleware';
 const router = Router();
 
 router.get('/active-package', authMiddleware, getActivePackage);
+router.get('/pending-deposit', authMiddleware, getPendingDeposit);
 router.post('/credits', authMiddleware, buyCredits);
 router.post('/redeem', authMiddleware, redeemCode);
 router.get('/history', authMiddleware, getHistory);

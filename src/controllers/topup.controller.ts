@@ -24,6 +24,23 @@ export const getActivePackage = asyncHandler(async (req: Request, res: Response)
     endDate: { $gt: new Date() }
   });
 
+  sendSuccess(res, {
+    balance: user.balance,
+    activePackage: activePackage
+      ? {
+          code: activePackage.packageCode,
+          name: activePackage.name,
+          credits: activePackage.credits,
+          creditsUsed: activePackage.creditsUsed,
+        }
+      : null,
+  });
+});
+
+// GET /topup/pending-deposit
+export const getPendingDeposit = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user._id;
+
   // Check for pending deposit (only return valid, non-expired)
   const pendingDeposit = await Deposit.findOne({
     userId,
@@ -43,15 +60,6 @@ export const getActivePackage = asyncHandler(async (req: Request, res: Response)
   }
 
   sendSuccess(res, {
-    balance: user.balance,
-    activePackage: activePackage
-      ? {
-          code: activePackage.packageCode,
-          name: activePackage.name,
-          credits: activePackage.credits,
-          creditsUsed: activePackage.creditsUsed,
-        }
-      : null,
     pendingDeposit: pendingDeposit
       ? {
           amountUSD: pendingDeposit.amountUSD,
