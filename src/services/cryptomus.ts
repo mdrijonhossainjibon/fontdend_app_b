@@ -58,6 +58,7 @@ export async function createInvoice(params: CreateInvoiceParams): Promise<Create
         },
     });
 
+    console.log(res.response)
     if (res.status >= 400) {
         const msg: string = res.response?.message || 'Cryptomus payment error';
         const err: any = new Error(msg);
@@ -66,9 +67,7 @@ export async function createInvoice(params: CreateInvoiceParams): Promise<Create
     }
 
     const data = res.response;
-
-    console.log(data)
-
+ 
     if (!data?.result?.url || !data?.result?.uuid) {
         const msg: string = data?.message || 'Cryptomus: unexpected response';
         const err: any = new Error(msg);

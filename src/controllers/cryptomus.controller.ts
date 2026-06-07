@@ -170,17 +170,7 @@ export const cryptomusWebhook = asyncHandler(async (req: Request, res: Response)
     }
 
     const credits = Math.round(parseFloat(amount) * creditsPerDollar);
-
-    // Add credits to active package
-    const activePkg = await Package.findOne({
-      userId,
-      status: 'active',
-      endDate: { $gt: new Date() },
-    });
-    if (activePkg) {
-      activePkg.credits += credits;
-      await activePkg.save();
-    }
+ 
 
     // Add balance
     await User.findByIdAndUpdate(userId, { $inc: { balance: parseFloat(amount) } });
