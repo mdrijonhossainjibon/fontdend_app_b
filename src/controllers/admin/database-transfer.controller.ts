@@ -1,6 +1,36 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { MongoClient } from 'mongodb';
+import crypto from 'crypto';
+
+// ─── In-memory transfer progress store ───
+interface CollectionProgress {
+  name: string;
+  docsTotal: number;
+  docsTransferred: number;
+}
+
+interface DbProgress {
+  name: string;
+  status: 'pending' | 'transferring' | 'completed' | 'failed';
+  collections: CollectionProgress[];
+  currentCollection: string;
+  error?: string;
+  bytesTransferred: number;
+}
+
+interface TransferProgress {
+  transferId: string;
+  status: 'running' | 'completed' | 'failed';
+  databases: DbProgress[];
+  currentDb: string;
+  totalDbs: number;
+  completedDbs: number;
+  startTime: number;
+  summary?: { total: number; succeeded: number; failed: number };
+}
+
+const transferProgressMap = new Map<string, TransferProgress>();
 
 /**
  * GET /api/admin/database/info
@@ -57,6 +87,12 @@ export const connectTarget = async (req: Request, res: Response) => {
     const { target } = req.body;
     if (!target || !target.host) {
       return res.status(400).json({ success: false, error: 'Target host is required' });
+    }
+
+    // Get source host from current mongoose connection
+    const sourceHost = mongoose.connection.host || '';
+    if (sourceHost && (sourceHost === target.host || sourceHost === `127.0.0.1` || sourceHost === `localhost`)) {
+      return res.status(400).json({ success: false, error: 'Source and Target servers cannot be the same' });
     }
 
     // Build target MongoDB URI
@@ -139,7 +175,7 @@ export const connectTarget = async (req: Request, res: Response) => {
 
 /**
  * POST /api/admin/database/transfer
- * Transfers selected databases from source to target using pure MongoDB driver
+ * Starts async transfer, returns transferId immediately. Poll GET /progress/:id for updates.
  */
 export const transferDatabases = async (req: Request, res: Response) => {
   try {
@@ -148,69 +184,123 @@ export const transferDatabases = async (req: Request, res: Response) => {
     if (!target || !target.host) {
       return res.status(400).json({ success: false, error: 'Target host is required' });
     }
+
+    // Reject if source and target are the same server
+    const sourceHost = mongoose.connection.host || '';
+    if (sourceHost && (sourceHost === target.host || sourceHost === `127.0.0.1` || sourceHost === `localhost`)) {
+      return res.status(400).json({ success: false, error: 'Source and Target servers cannot be the same' });
+    }
+
     if (!databases || !Array.isArray(databases) || databases.length === 0) {
       return res.status(400).json({ success: false, error: 'Database names array is required' });
     }
 
-    // Get source URI from current mongoose connection
     const sourceUri = getSourceUri();
     if (!sourceUri) {
       return res.status(503).json({ success: false, error: 'Source MONGO_URI not configured' });
     }
 
-    // Build target URI
-    const targetPort = target.port || 27017;
-    const authDb = target.authDb || 'admin';
-    let targetUri: string;
-    if (target.user && target.password) {
-      targetUri = `mongodb://${encodeURIComponent(target.user)}:${encodeURIComponent(target.password)}@${target.host}:${targetPort}/admin?authSource=${authDb}`;
-    } else {
-      targetUri = `mongodb://${target.host}:${targetPort}/admin`;
-    }
+    // Create progress entry
+    const transferId = crypto.randomBytes(8).toString('hex');
+    const progress: TransferProgress = {
+      transferId,
+      status: 'running',
+      databases: databases.map(name => ({
+        name,
+        status: 'pending',
+        collections: [],
+        currentCollection: '',
+        bytesTransferred: 0,
+      })),
+      currentDb: '',
+      totalDbs: databases.length,
+      completedDbs: 0,
+      startTime: Date.now(),
+    };
+    transferProgressMap.set(transferId, progress);
 
-    // Connect to target
-    let targetClient: MongoClient;
-    try {
-      targetClient = new MongoClient(targetUri, {
-        serverSelectionTimeoutMS: 10000,
-        connectTimeoutMS: 10000,
-      });
-      await targetClient.connect();
-    } catch (err: any) {
-      return res.status(502).json({
-        success: false,
-        error: `Cannot connect to target server: ${err.message}`,
-      });
-    }
+    // Run transfer in background
+    runTransferInBackground(target, databases, transferId);
 
-    // Transfer each database
-    const results: { db: string; status: string; error?: string }[] = [];
-
-    for (const dbName of databases) {
-      try {
-        await transferDatabase(dbName, targetClient);
-        results.push({ db: dbName, status: 'success' });
-      } catch (err: any) {
-        results.push({ db: dbName, status: 'failed', error: err.message });
-      }
-    }
-
-    await targetClient.close();
-
-    const failed = results.filter(r => r.status === 'failed');
     return res.json({
-      success: failed.length === 0,
-      results,
-      summary: {
-        total: databases.length,
-        succeeded: results.filter(r => r.status === 'success').length,
-        failed: failed.length,
-      },
+      success: true,
+      transferId,
+      message: 'Transfer started',
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
+
+/**
+ * GET /api/admin/database/progress/:transferId
+ * Returns current transfer progress
+ */
+export const getTransferProgress = async (req: Request, res: Response) => {
+  const { transferId } = req.params;
+  const progress = transferProgressMap.get(transferId);
+  if (!progress) {
+    return res.status(404).json({ success: false, error: 'Transfer not found or expired' });
+  }
+
+  // Auto-cleanup after 5 min of completion/failure
+  if (progress.status !== 'running') {
+    setTimeout(() => transferProgressMap.delete(transferId), 5 * 60 * 1000);
+  }
+
+  return res.json({ success: true, progress });
+};
+
+// ─── Background transfer runner ───
+
+async function runTransferInBackground(target: any, databases: string[], transferId: string) {
+  const progress = transferProgressMap.get(transferId)!;
+
+  const targetPort = target.port || 27017;
+  const authDb = target.authDb || 'admin';
+  let targetUri: string;
+  if (target.user && target.password) {
+    targetUri = `mongodb://${encodeURIComponent(target.user)}:${encodeURIComponent(target.password)}@${target.host}:${targetPort}/admin?authSource=${authDb}`;
+  } else {
+    targetUri = `mongodb://${target.host}:${targetPort}/admin`;
+  }
+
+  let targetClient: MongoClient;
+  try {
+    targetClient = new MongoClient(targetUri, { serverSelectionTimeoutMS: 10000, connectTimeoutMS: 10000 });
+    await targetClient.connect();
+  } catch (err: any) {
+    progress.status = 'failed';
+    databases.forEach((_, i) => {
+      progress.databases[i].status = 'failed';
+      progress.databases[i].error = err.message;
+    });
+    return;
+  }
+
+  for (let i = 0; i < databases.length; i++) {
+    const dbName = databases[i];
+    progress.currentDb = dbName;
+    progress.databases[i].status = 'transferring';
+
+    try {
+      await transferDatabase(dbName, targetClient, transferId);
+      progress.databases[i].status = 'completed';
+      progress.completedDbs++;
+    } catch (err: any) {
+      progress.databases[i].status = 'failed';
+      progress.databases[i].error = err.message;
+    }
+  }
+
+  await targetClient.close();
+
+  const total = databases.length;
+  const succeeded = progress.databases.filter(d => d.status === 'completed').length;
+  const failed = progress.databases.filter(d => d.status === 'failed').length;
+  progress.status = failed === 0 ? 'completed' : failed === total ? 'failed' : 'completed';
+  progress.summary = { total, succeeded, failed };
+}
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -227,7 +317,8 @@ function getSourceUri(): string | null {
   return process.env.MONGO_URI || process.env.MONGODB_URI || null;
 }
 
-async function transferDatabase(dbName: string, targetClient: MongoClient): Promise<void> {
+async function transferDatabase(dbName: string, targetClient: MongoClient, transferId?: string): Promise<void> {
+  const progress = transferId ? transferProgressMap.get(transferId) : undefined;
   // Connect source client explicitly so we can access any database
   const sourceUri = getSourceUri()!;
   const sourceClient = new MongoClient(sourceUri, {
@@ -246,7 +337,21 @@ async function transferDatabase(dbName: string, targetClient: MongoClient): Prom
       .map((c: any) => c.name)
       .filter((name: string) => !name.startsWith('system.'));
 
+    // Init progress for this db
+    if (progress) {
+      const dbProg = progress.databases.find(d => d.name === dbName);
+      if (dbProg) {
+        dbProg.collections = collectionNames.map(name => ({ name, docsTotal: 0, docsTransferred: 0 }));
+      }
+    }
+
     for (const collName of collectionNames) {
+      // Update current collection in progress
+      if (progress) {
+        const dbProg = progress.databases.find(d => d.name === dbName);
+        if (dbProg) dbProg.currentCollection = collName;
+      }
+
       // Drop existing collection on target (like mongorestore --drop)
       try {
         await targetDb.collection(collName).drop();
@@ -267,6 +372,19 @@ async function transferDatabase(dbName: string, targetClient: MongoClient): Prom
             if (batch.length > 0) {
               await targetDb.collection(collName).insertMany(batch, { ordered: false });
             }
+
+            // Update docs transferred
+            if (progress) {
+              const dbProg = progress.databases.find(d => d.name === dbName);
+              if (dbProg) {
+                const colProg = dbProg.collections.find(c => c.name === collName);
+                if (colProg) {
+                  colProg.docsTransferred += batch.length;
+                  colProg.docsTotal = totalDocs;
+                }
+              }
+            }
+
             batch = [];
           }
         }
@@ -275,6 +393,19 @@ async function transferDatabase(dbName: string, targetClient: MongoClient): Prom
       // Insert remaining docs
       if (batch.length > 0) {
         await targetDb.collection(collName).insertMany(batch, { ordered: false });
+      }
+
+      // Final doc count for this collection
+      if (progress) {
+        const dbProg = progress.databases.find(d => d.name === dbName);
+        if (dbProg) {
+          const colProg = dbProg.collections.find(c => c.name === collName);
+          if (colProg) {
+            colProg.docsTotal = totalDocs;
+            colProg.docsTransferred = totalDocs;
+          }
+          dbProg.bytesTransferred += 1;
+        }
       }
     }
   } finally {

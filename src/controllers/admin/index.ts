@@ -7,7 +7,7 @@ export { list as listPricingPlans, create as createPricingPlan, update as update
 export { listRoles, createRole, updateRole, removeRole, listUsers as listPermissionUsers, updateUserRole, listPermissions } from './permissions.controller';
 export { getSiteSettings, updateSiteSettings, getSmtpSettings, updateSmtpSettings, testSmtpSettings } from './settings.controller';
 export { getStats as getDbStats, cleanActivity as cleanDbActivity } from './database.controller';export { list as listDatabaseCollections, validate as validateCollection, repair as repairCollection, deleteIndex as deleteDatabaseIndex } from './database.controller';
-export { getDbInfo, connectTarget, transferDatabases } from './database-transfer.controller';
+export { getDbInfo, connectTarget, transferDatabases, getTransferProgress } from './database-transfer.controller';
 export { check as healthCheck } from './health.controller';
 export { list as listBotEndpoints, create as createBotEndpoint, update as updateBotEndpoint, remove as removeBotEndpoint, testEndpoint } from './bot-endpoints.controller';
 export { list as listObjectClasses, create as createObjectClass, update as updateObjectClass, remove as removeObjectClass } from './object-classes.controller';
