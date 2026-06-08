@@ -208,8 +208,9 @@ async function resolveCountries(events: any[]): Promise<void> {
         )
       );
       results.forEach((res, idx) => {
-        if (res.status === 'fulfilled' && res.value && res.value.country) {
-          ipToCountry[batch[idx]] = res.value.country;
+        const data = res as PromiseFulfilledResult<any>;
+        if (data.status === 'fulfilled' && data.value?.country) {
+          ipToCountry[batch[idx]] = data.value.country;
         }
       });
     } catch { /* skip failures */ }
