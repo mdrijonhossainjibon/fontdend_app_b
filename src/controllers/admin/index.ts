@@ -1,4 +1,4 @@
-export { getDashboardStats, getRevenueStats, getUserAnalytics } from './analytics.controller';
+export { getDashboardStats, getRevenueStats, getUserAnalytics, getAnalytics } from './analytics.controller';
 export { list as listUsers, getById as getUserById, update as updateUser, remove as removeUser, toggleActive as toggleUserActive } from './users.controller';
 export { list as listWallets, create as createWallet, update as updateWallet, remove as removeWallet } from './admin-wallets.controller';
 export { list as listDeposits, approve as approveDeposit, reject as rejectDeposit, clearDeposits } from './deposits.controller';

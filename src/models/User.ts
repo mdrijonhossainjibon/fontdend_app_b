@@ -5,6 +5,7 @@ export interface IUser extends Document {
     referralCode?: string
     referredBy?: mongoose.Types.ObjectId
     referralEarnings: number
+    freeTrialUsed: boolean
     email: string
     password: string
     name?: string
@@ -50,6 +51,10 @@ const UserSchema: Schema<IUser> = new Schema(
         balance: {
             type: Number,
             default: 0,
+        },
+        freeTrialUsed: {
+            type: Boolean,
+            default: false,
         },
         status: {
             type: String,

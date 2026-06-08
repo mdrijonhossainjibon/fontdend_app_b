@@ -11,6 +11,7 @@ import { ApiKey } from '@/models/ApiKey';
 import { Solution } from '@/models/Solution';
 import { Deposit } from '@/models/Deposit';
 import { Extension } from '@/models/Extension';
+import { AnalyticsEvent } from '@/models/AnalyticsEvent';
 
 export const getDashboardStats = asyncHandler(async (req: any, res: Response) => {
   await connectDB();
@@ -185,4 +186,157 @@ export const getUserAnalytics = asyncHandler(async (req: Request, res: Response)
     retention: activeLastMonth > 0 ? Math.round((activeLastDay / activeLastMonth) * 100) : 0,
     signupsByMonth,
   });
+});
+
+// ── Resolve IPs to countries via ip-api.com (free, no key needed) ─────────────
+async function resolveCountries(events: any[]): Promise<void> {
+  const needsLookup = events.filter((e: any) => e.ip && !e.country);
+  if (needsLookup.length === 0) return;
+
+  // Deduplicate by IP
+  const uniqueIPs = [...new Set(needsLookup.map((e: any) => e.ip))];
+  const ipToCountry: Record<string, string> = {};
+
+  // Batch in chunks of 100 (ip-api limit)
+  for (let i = 0; i < uniqueIPs.length; i += 100) {
+    const batch = uniqueIPs.slice(i, i + 100);
+    try {
+      // Single IP lookup is free, batch requires pro — use single per IP
+      const results = await Promise.allSettled(
+        batch.map(ip =>
+          fetch(`http://ip-api.com/json/${ip}?fields=country`).then(r => r.json())
+        )
+      );
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled' && res.value && res.value.country) {
+          ipToCountry[batch[idx]] = res.value.country;
+        }
+      });
+    } catch { /* skip failures */ }
+  }
+
+  // Update events with resolved countries + persist to DB
+  const bulkOps: any[] = [];
+  events.forEach((e: any) => {
+    if (e.ip && !e.country && ipToCountry[e.ip]) {
+      e.country = ipToCountry[e.ip];
+      bulkOps.push({
+        updateOne: { filter: { _id: e._id }, update: { $set: { country: ipToCountry[e.ip] } } },
+      });
+    }
+  });
+
+  if (bulkOps.length > 0) {
+    await AnalyticsEvent.bulkWrite(bulkOps).catch(() => {});
+  }
+}
+
+// ── Consolidated Analytics Dashboard ─────────────────────────────────────────
+export const getAnalytics = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+
+  const days = parseInt(req.query.days as string) || 30;
+  const since = new Date(Date.now() - days * 86400000);
+
+  const [totalCaptchas, apiKeys, completedDeposits, events] = await Promise.all([
+    AnalyticsEvent.countDocuments({ eventType: 'captcha_solve' }),
+    ApiKey.countDocuments(),
+    Deposit.countDocuments({ status: 'completed' }),
+    AnalyticsEvent.find({ createdAt: { $gte: since } }).lean(),
+  ]);
+
+  // Resolve IPs to countries (free ip-api.com)
+  await resolveCountries(events);
+
+  // ── Daily chart data ──
+  const dayMap: Record<string, { date: string; requests: number; users: number; successCount: number; totalCount: number }> = {};
+  for (let i = 0; i < days; i++) {
+    const d = new Date(Date.now() - i * 86400000);
+    const key = d.toISOString().split('T')[0];
+    dayMap[key] = { date: key, requests: 0, users: 0, successCount: 0, totalCount: 0 };
+  }
+
+  let totalApiCalls = 0;
+  let totalResponseTime = 0;
+  let responseTimeCount = 0;
+  let periodCaptchaCount = 0;
+
+  const countryMap: Record<string, number> = {};
+  const typeMap: Record<string, number> = {};
+
+  events.forEach((e: any) => {
+    const key = new Date(e.createdAt).toISOString().split('T')[0];
+    if (!dayMap[key]) return;
+
+    dayMap[key].requests++;
+
+    if (e.eventType === 'captcha_solve') {
+      dayMap[key].totalCount++;
+      periodCaptchaCount++;
+      if (e.status === 'success') dayMap[key].successCount++;
+      if (e.category) typeMap[e.category] = (typeMap[e.category] || 0) + 1;
+      if (e.responseTime) { totalResponseTime += e.responseTime; responseTimeCount++; }
+    }
+    if (e.eventType === 'api_request') {
+      totalApiCalls++;
+    }
+    // Country — from resolved or already stored
+    const country = e.country || 'Unknown';
+    countryMap[country] = (countryMap[country] || 0) + 1;
+  });
+
+  // User signups from User model
+  const recentUsers = await User.find({ role: 'user', createdAt: { $gte: since } }).select('createdAt').lean();
+  const signupDayMap: Record<string, number> = {};
+  recentUsers.forEach((u: any) => {
+    const key = new Date(u.createdAt).toISOString().split('T')[0];
+    signupDayMap[key] = (signupDayMap[key] || 0) + 1;
+  });
+  Object.entries(signupDayMap).forEach(([key, count]) => {
+    if (dayMap[key]) dayMap[key].users = count;
+  });
+
+  const chartData = Object.values(dayMap)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(d => ({
+      ...d,
+      successRate: d.totalCount > 0 ? ((d.successCount / d.totalCount) * 100).toFixed(1) + '%' : '100%',
+    }));
+
+  // ── Metrics ──
+  const avgResponseTimeMs = responseTimeCount > 0 ? totalResponseTime / responseTimeCount : 0;
+  const totalEvents = events.length;
+  const totalEventSuccess = events.filter((e: any) => e.status === 'success').length;
+
+  const metrics = {
+    totalCaptchas: { value: totalCaptchas.toLocaleString(), change: `+${periodCaptchaCount}` },
+    avgResponseTime: {
+      value: avgResponseTimeMs > 1000 ? `${(avgResponseTimeMs / 1000).toFixed(1)}s` : `${Math.round(avgResponseTimeMs)}ms`,
+      change: avgResponseTimeMs > 0 ? `${Math.round(avgResponseTimeMs)}ms` : '0ms',
+    },
+    successRate: {
+      value: totalEvents > 0 ? `${((totalEventSuccess / totalEvents) * 100).toFixed(1)}%` : '100%',
+      change: `+${totalEvents > 0 ? ((totalEventSuccess / totalEvents) * 100).toFixed(0) : 100}%`,
+    },
+    apiCalls: { value: totalApiCalls.toLocaleString(), change: `+${totalApiCalls}` },
+    totalRevenue: { value: `$${(completedDeposits || 0).toLocaleString()}`, change: `+${completedDeposits}` },
+    activeApiKeys: { value: apiKeys.toLocaleString(), change: `+${apiKeys > 0 ? Math.min(apiKeys, 10) : 0}` },
+  };
+
+  // ── Top countries ──
+  const topCountries = Object.entries(countryMap)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([country, requests]) => ({ country, requests }));
+
+  // ── Captcha types ──
+  const captchaTypes = Object.entries(typeMap)
+    .sort(([, a], [, b]) => b - a)
+    .map(([type, count], i) => ({
+      type: type.toUpperCase(),
+      count,
+      color: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'][i % 5],
+    }));
+
+  sendSuccess(res, { chartData, metrics, topCountries, captchaTypes });
 });

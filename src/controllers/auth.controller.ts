@@ -10,6 +10,7 @@ import { createTokens } from '@/services/jwt';
 import { generateOTP, sendOTPEmail, sendPasswordResetEmail } from '@/services/email';
 import { logActivity } from '@/services/activity';
 import { Referral } from '@/models/Referral';
+import { SystemSetting } from '@/models/SystemSetting';
 
 const generateReferralCode = (name: string): string => {
   const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -88,6 +89,19 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   // Generate default API key
   const keyExists = await ApiKey.findOne({ userId: user._id });
+
+  // Auto-grant free trial if enabled
+  try {
+    const settings = await SystemSetting.findOne();
+    if (settings?.freeTrialEnabled && !user.freeTrialUsed) {
+      const trialCredits = settings.freeTrialCredits ?? 250;
+      user.balance += trialCredits;
+      user.freeTrialUsed = true;
+      await user.save();
+    }
+  } catch (err) {
+    console.error('Failed to apply free trial:', err);
+  }
   if (!keyExists) {
     await ApiKey.create({
       userId: user._id, name: 'Default Key',

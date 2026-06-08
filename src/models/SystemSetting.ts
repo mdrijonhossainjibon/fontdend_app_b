@@ -19,6 +19,11 @@ const SystemSettingSchema = new mongoose.Schema({
     cryptomusApiKey: { type: String, default: '' },
     cryptomusCreditsPerDollar: { type: Number, default: 1000 },
 
+    // Free Trial
+    freeTrialEnabled: { type: Boolean, default: true },
+    freeTrialCredits: { type: Number, default: 250 },
+    freeTrialDays: { type: Number, default: 7 },
+
     // Cache Control
     cacheControlAws: { type: Boolean, default: true },
     cacheControlKbs: { type: Boolean, default: true },

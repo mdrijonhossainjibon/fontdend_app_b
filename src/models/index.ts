@@ -1,4 +1,5 @@
 // Database Models
+export { AnalyticsEvent } from './AnalyticsEvent'
 export { Activity } from './Activity'
 export { AdminWallet } from './AdminWallet'
 export { ApiKey } from './ApiKey'
