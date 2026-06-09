@@ -1,18 +1,18 @@
 import { Document } from 'mongoose'
 
 export interface IPricingPlan extends Document {
-  name: string
   code: string
-  description: string
+  type: 'count' | 'daily' | 'minute'
   price: number
-  credits: number
-  type: 'free' | 'basic' | 'premium' | 'enterprise'
-  billingCycle: 'monthly' | 'yearly' | 'one_time'
-  features: string[]
-  limits: Record<string, number>
+  priceDisplay: string
+  validity: string
+  validityDays: number
+  recognition: string
+  count?: number
+  dailyLimit?: number
+  rateLimit?: number
   isActive: boolean
   sortOrder: number
-  popular: boolean
   createdAt: Date
   updatedAt: Date
 }

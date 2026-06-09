@@ -95,7 +95,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     const settings = await SystemSetting.findOne();
     if (settings?.freeTrialEnabled && !user.freeTrialUsed) {
       const trialCredits = settings.freeTrialCredits ?? 250;
-      user.balance += trialCredits;
+      user.credits += trialCredits;
       user.freeTrialUsed = true;
       await user.save();
     }

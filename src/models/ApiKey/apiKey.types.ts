@@ -6,6 +6,9 @@ export interface IApiKey extends Document {
   key: string
   prefix: string
   scopes: string[]
+  status: string
+  usageCount: number
+  lastUsed?: Date
   lastUsedAt?: Date
   expiresAt?: Date
   isActive: boolean

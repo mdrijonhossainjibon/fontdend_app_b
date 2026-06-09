@@ -10,6 +10,12 @@ export interface IPromoOffer extends Document {
   expiresAt: Date
   isActive: boolean
   termsConditions?: string
+  badge?: string
+  features?: string[]
+  highlight?: string
+  pricingPlanCode?: string
+  sortOrder?: number
+  image?: string
   createdAt: Date
   updatedAt: Date
 }

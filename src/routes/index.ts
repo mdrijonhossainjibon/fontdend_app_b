@@ -29,7 +29,7 @@ router.get('/d/:shortId', async (req, res) => {
 
         // Redirect to actual download URL
         // If the URL is relative, prepend the protocol and host
-        let finalUrl = extension.downloadUrl;
+        let finalUrl = extension.downloadUrl || '/';
         if (finalUrl.startsWith('/')) {
             finalUrl = `${req.protocol}://${req.get('host')}${finalUrl}`;
         }

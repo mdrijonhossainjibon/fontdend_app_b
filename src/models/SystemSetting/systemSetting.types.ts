@@ -10,6 +10,20 @@ export interface ISystemSetting extends Document {
   freeTrialEnabled?: boolean
   freeTrialCredits?: number
   freeTrialDays?: number
+  platformName?: string
+  supportEmail?: string
+  maxApiRateLimit?: number
+  mainWalletAddress?: string
+  twoFARequired?: boolean
+  ipWhitelist?: string
+  sessionTimeout?: number
+  cryptomusMerchantId?: string
+  cryptomusApiKey?: string
+  cryptomusCreditsPerDollar?: number
+  cacheControlAws?: boolean
+  cacheControlKbs?: boolean
+  cacheControlHcaptcha?: boolean
+  cacheControlKblogin?: boolean
   createdAt: Date
   updatedAt: Date
 }

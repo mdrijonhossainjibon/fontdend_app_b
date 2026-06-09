@@ -8,11 +8,14 @@ export const PromoCodeSchema = new Schema<IPromoCode>(
     discount: { type: Number, required: true, min: 0 },
     maxUses: { type: Number, default: 1, min: 1 },
     usedCount: { type: Number, default: 0, min: 0 },
+    currentUses: { type: Number, default: 0, min: 0 },
     minAmount: { type: Number, min: 0 },
     maxDiscount: { type: Number, min: 0 },
     expiresAt: { type: Date },
     isActive: { type: Boolean, default: true },
     usedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    credits: { type: Number },
+    packageId: { type: String },
   },
   { timestamps: true }
 )

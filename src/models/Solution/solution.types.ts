@@ -6,7 +6,7 @@ export interface ISolution extends Document {
   description?: string
   code: string
   language: string
-  type: 'object_detection' | 'classification' | 'custom'
+  type: 'object_detection' | 'classification' | 'custom' | 'objectTag' | 'objectClassify' | 'objectClick' | 'objectDrag' | 'grid'
   modelId?: string
   version: number
   isActive: boolean
@@ -14,6 +14,14 @@ export interface ISolution extends Document {
   config?: Record<string, unknown>
   metrics?: Record<string, number>
   lastDeployedAt?: Date
+  hash?: string
+  question?: string
+  service?: string
+  solution?: any
+  imageData?: any[]
+  examples?: any[]
+  classNames?: string[]
+  apiKeyId?: string | null
   createdAt: Date
   updatedAt: Date
 }

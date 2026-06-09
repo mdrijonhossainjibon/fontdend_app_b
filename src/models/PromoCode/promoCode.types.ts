@@ -6,11 +6,14 @@ export interface IPromoCode extends Document {
   discount: number
   maxUses: number
   usedCount: number
+  currentUses: number
   minAmount?: number
   maxDiscount?: number
   expiresAt?: Date
   isActive: boolean
   usedBy: Types.ObjectId[]
+  credits?: number
+  packageId?: string
   createdAt: Date
   updatedAt: Date
 }

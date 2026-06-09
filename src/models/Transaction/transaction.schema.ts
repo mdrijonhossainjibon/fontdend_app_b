@@ -4,12 +4,15 @@ import { ITransaction } from './transaction.types'
 export const TransactionSchema = new Schema<ITransaction>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    type: { type: String, enum: ['credit', 'debit'], required: true },
+    type: { type: String, enum: ['credit', 'debit', 'purchase', 'redeem', 'deposit'], required: true },
     amount: { type: Number, required: true, min: 0 },
+    credits: { type: Number },
     balanceBefore: { type: Number, required: true, min: 0 },
     balanceAfter: { type: Number, required: true, min: 0 },
     currency: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
+    label: { type: String },
+    meta: { type: String },
     referenceType: { type: String, enum: ['deposit', 'withdrawal', 'payment', 'refund', 'credit_purchase', 'usage'], required: true },
     referenceId: { type: String, trim: true },
     status: { type: String, enum: ['pending', 'completed', 'failed', 'cancelled'], default: 'completed' },

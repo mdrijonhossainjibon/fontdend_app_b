@@ -1,11 +1,14 @@
 import { Document } from 'mongoose'
 
 export interface IHealthCheck extends Document {
-  service: string
+  botName: string
+  endpoint: string
   status: 'up' | 'down' | 'degraded'
   responseTime: number
-  message?: string
-  metadata?: Record<string, unknown>
-  checkedAt: Date
+  lastChecked: Date
+  uptime?: number
+  errorMessage?: string
+  healthData?: any
   createdAt: Date
+  updatedAt: Date
 }

@@ -54,10 +54,11 @@ export const testEndpoint = asyncHandler(async (req: Request, res: Response) => 
   if (!endpoint) throw new ApiError(404, 'Bot endpoint not found');
 
   try {
-    const response = await fetch(endpoint.url, {
-      method: endpoint.method || 'POST',
-      headers: { 'Content-Type': 'application/json', ...endpoint.headers },
-      body: endpoint.body ? JSON.stringify(endpoint.body) : undefined,
+    const ep = endpoint as any;
+    const response = await fetch(ep.url || `${endpoint.protocol}://${endpoint.endpoint}:${endpoint.port}`, {
+      method: ep.method || 'POST',
+      headers: { 'Content-Type': 'application/json', ...(ep.headers || {}) },
+      body: ep.body ? JSON.stringify(ep.body) : undefined,
     });
     sendSuccess(res, { status: response.status, ok: response.ok, statusText: response.statusText });
   } catch (err: any) {

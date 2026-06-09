@@ -215,7 +215,7 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
   if (!activeUserPackage) throw new ApiError(400, 'No active package found');
 
   // Add credits
-  activeUserPackage.credits += promo.credits;
+  activeUserPackage.credits += promo.credits || 0;
   await activeUserPackage.save();
 
   // Increment usage counter
@@ -223,17 +223,18 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
   await promo.save();
 
   // Create transaction
+  const promoCredits = promo.credits || 0;
   await Transaction.create({
     userId,
     type: 'redeem',
-    credits: promo.credits,
+    credits: promoCredits,
     label: 'Promo Code',
     meta: normalizedCode,
   });
 
   sendSuccess(res, {
     data: {
-      creditsAdded: promo.credits,
+      creditsAdded: promoCredits,
       totalCredits: activeUserPackage.credits,
       code: normalizedCode,
     },
@@ -266,12 +267,12 @@ export const getHistory = asyncHandler(async (req: Request, res: Response) => {
 
   const totalSpent = purchases.reduce((s, t) => s + (t.amount || 0), 0);
   const totalCreditsAdded = transactions
-    .filter((t) => t.credits > 0)
-    .reduce((s, t) => s + t.credits, 0);
+    .filter((t) => (t.credits ?? 0) > 0)
+    .reduce((s, t) => s + (t.credits ?? 0), 0);
   const totalCreditsUsed = Math.abs(
     transactions
-      .filter((t) => t.credits < 0)
-      .reduce((s, t) => s + t.credits, 0)
+      .filter((t) => (t.credits ?? 0) < 0)
+      .reduce((s, t) => s + (t.credits ?? 0), 0)
   );
   const thisMonthSpent = purchases
     .filter((t) => new Date(t.createdAt) >= firstOfMonth)

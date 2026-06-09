@@ -3,15 +3,16 @@ import { IHealthCheck } from './healthCheck.types'
 
 export const HealthCheckSchema = new Schema<IHealthCheck>(
   {
-    service: { type: String, required: true, trim: true },
-    status: { type: String, enum: ['up', 'down', 'degraded'], required: true },
-    responseTime: { type: Number, required: true, min: 0 },
-    message: { type: String, trim: true },
-    metadata: { type: Schema.Types.Mixed, default: {} },
-    checkedAt: { type: Date, default: Date.now },
-    createdAt: { type: Date, default: Date.now },
+    botName: { type: String, required: true, index: true },
+    endpoint: { type: String, required: true },
+    status: { type: String, enum: ['up', 'down', 'degraded'], default: 'up', index: true },
+    responseTime: { type: Number, default: 0 },
+    lastChecked: { type: Date, default: Date.now },
+    uptime: { type: Number, default: 100 },
+    errorMessage: { type: String },
+    healthData: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 )
-HealthCheckSchema.index({ service: 1, checkedAt: -1 })
-HealthCheckSchema.index({ status: 1 })
+
+HealthCheckSchema.index({ botName: 1, lastChecked: -1 })

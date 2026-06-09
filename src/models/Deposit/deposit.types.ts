@@ -2,19 +2,20 @@ import { Document, Types } from 'mongoose'
 
 export interface IDeposit extends Document {
   userId: Types.ObjectId
-  txId: string
-  currency: string
-  network: string
+  cryptoId: string
+  cryptoName: string
+  networkId: string
+  networkName: string
   amount: number
-  fee: number
-  netAmount: number
+  amountUSD: number
+  txHash?: string
   address: string
-  fromAddress?: string
+  status: 'pending' | 'confirming' | 'completed' | 'failed' | 'expired' | 'rejected' | 'approved'
   confirmations: number
   requiredConfirmations: number
-  status: 'pending' | 'confirming' | 'completed' | 'failed'
-  metadata?: Record<string, unknown>
-  completedAt?: Date
+  fee?: string
+  notes?: string
+  expiresAt?: Date
   createdAt: Date
   updatedAt: Date
 }

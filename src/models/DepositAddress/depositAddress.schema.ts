@@ -11,6 +11,9 @@ export const DepositAddressSchema = new Schema<IDepositAddress>(
     isActive: { type: Boolean, default: true },
     totalDeposited: { type: Number, default: 0, min: 0 },
     lastDepositedAt: { type: Date },
+    cryptoId: { type: String },
+    networkId: { type: String },
+    privateKey: { type: String },
   },
   { timestamps: true }
 )

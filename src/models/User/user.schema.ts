@@ -47,6 +47,14 @@ export const UserSchema = new Schema<IUser>(
       default: 0,
       min: 0,
     },
+    balance: {
+      type: Number,
+      default: 0,
+    },
+    referralEarnings: {
+      type: Number,
+      default: 0,
+    },
     status: {
       type: String,
       enum: ['active', 'inactive', 'suspended', 'banned'],
@@ -92,7 +100,6 @@ export const UserSchema = new Schema<IUser>(
     },
     lastLoginIp: {
       type: String,
-      trim: true,
     },
     metadata: {
       type: Schema.Types.Mixed,
@@ -101,53 +108,32 @@ export const UserSchema = new Schema<IUser>(
   },
   {
     timestamps: true,
-    toJSON: {
-      transform(_doc, ret) {
-        delete ret.password
-        delete ret.twoFactorSecret
-        delete ret.__v
-        return ret
-      },
-    },
   }
 )
 
-// --- Indexes ---
 UserSchema.index({ email: 1 })
 UserSchema.index({ referralCode: 1 })
-UserSchema.index({ status: 1 })
+UserSchema.index({ status: 1, role: 1 })
 UserSchema.index({ createdAt: -1 })
-UserSchema.index({ email: 1, status: 1 })
 
-// --- Pre-save hook: hash password ---
 UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password') || !this.password) return next()
+  if (!this.isModified('password')) return next()
   try {
     const salt = await bcrypt.genSalt(SALT_ROUNDS)
     this.password = await bcrypt.hash(this.password, salt)
     next()
-  } catch (err) {
-    next(err as Error)
+  } catch (err: any) {
+    next(err)
   }
 })
 
-// --- Instance methods ---
-UserSchema.methods.comparePassword = async function (
-  this: IUser,
-  candidatePassword: string
-): Promise<boolean> {
+UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password)
 }
 
-UserSchema.methods.toSafeObject = function (): Record<string, unknown> {
+UserSchema.methods.toSafeObject = function (): Omit<IUser, 'password' | 'twoFactorSecret'> {
   const obj = this.toObject()
   delete obj.password
   delete obj.twoFactorSecret
-  delete obj.__v
   return obj
-}
-
-// --- Static methods ---
-UserSchema.statics.findByEmail = function (email: string) {
-  return this.findOne({ email: email.toLowerCase() })
 }

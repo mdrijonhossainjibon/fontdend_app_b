@@ -57,15 +57,18 @@ export const run = asyncHandler(async (req: Request, res: Response) => {
             .limit(10)
             .lean();
         const totalChecks = recentChecks.length + 1;
-        const healthyChecks = recentChecks.filter(c => c.status === 'healthy').length + (status === 'healthy' ? 1 : 0);
+        const isUp = status === 'healthy';
+        const healthyChecks = recentChecks.filter(c => c.status === 'up').length + (isUp ? 1 : 0);
         const uptime = Math.round((healthyChecks / totalChecks) * 100);
+
+        const dbStatus: 'up' | 'down' | 'degraded' = status === 'healthy' ? 'up' : status === 'unhealthy' ? 'down' : 'degraded';
 
         const updated = await HealthCheck.findOneAndUpdate(
             { botName: bot.botName },
             {
                 botName: bot.botName,
                 endpoint: `${bot.protocol}://${bot.endpoint}:${bot.port}`,
-                status,
+                status: dbStatus,
                 responseTime,
                 lastChecked: new Date(),
                 uptime,

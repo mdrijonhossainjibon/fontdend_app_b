@@ -101,7 +101,7 @@ export const regenerateApiKey = asyncHandler(async (req: Request, res: Response)
 
   const newKey = `pk_live_${Buffer.from(Math.random().toString(36).substring(2) + Date.now().toString(36)).toString('hex').substring(0, 24)}`;
   apiKey.key = newKey;
-  apiKey.lastUsed = null;
+  apiKey.lastUsed = undefined;
   apiKey.usageCount = 0;
   await apiKey.save();
 

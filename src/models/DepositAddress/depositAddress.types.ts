@@ -9,6 +9,9 @@ export interface IDepositAddress extends Document {
   isActive: boolean
   totalDeposited: number
   lastDepositedAt?: Date
+  cryptoId?: string
+  networkId?: string
+  privateKey?: string
   createdAt: Date
   updatedAt: Date
 }

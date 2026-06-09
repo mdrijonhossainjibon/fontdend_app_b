@@ -12,6 +12,12 @@ export const PromoOfferSchema = new Schema<IPromoOffer>(
     expiresAt: { type: Date, required: true },
     isActive: { type: Boolean, default: true },
     termsConditions: { type: String },
+    badge: { type: String, default: '' },
+    features: { type: [String], default: [] },
+    highlight: { type: String, default: '' },
+    pricingPlanCode: { type: String, default: '' },
+    sortOrder: { type: Number, default: 0 },
+    image: { type: String, default: '' },
   },
   { timestamps: true }
 )
