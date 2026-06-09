@@ -33,7 +33,17 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
     User.countDocuments(query),
   ]);
 
-  sendSuccess(res, { users, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+  sendSuccess(res, {
+    users,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
+    },
+  });
 });
 
 export const getById = asyncHandler(async (req: Request, res: Response) => {
