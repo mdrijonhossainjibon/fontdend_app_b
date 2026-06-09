@@ -3,7 +3,7 @@ import { Activity } from '@/models/Activity';
 export async function logActivity({
     userId,
     action,
-    type,
+    resource,
     description,
     ip,
     location = 'Unknown',
@@ -11,7 +11,7 @@ export async function logActivity({
 }: {
     userId: string | any;
     action: string;
-    type: string;
+    resource: string;
     description: string;
     ip: string;
     location?: string;
@@ -21,7 +21,7 @@ export async function logActivity({
         await Activity.create({
             userId,
             action,
-            type,
+            resource,
             description,
             ip,
             location,

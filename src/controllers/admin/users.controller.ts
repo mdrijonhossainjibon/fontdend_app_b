@@ -71,7 +71,7 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true }).select('-password');
   if (!user) throw new ApiError(404, 'User not found');
 
-  await logActivity({ userId: (req as any).user._id, action: 'User Updated', type: 'admin', description: `Updated user: ${user.email}`, ip: getClientIp(req) });
+  await logActivity({ userId: (req as any).user._id, action: 'User Updated', resource: 'user', description: `Updated user: ${user.email}`, ip: getClientIp(req) });
   sendSuccess(res, { message: 'User updated successfully', user });
 });
 
@@ -84,7 +84,7 @@ export const remove = asyncHandler(async (req: Request, res: Response) => {
   await Activity.deleteMany({ userId: user._id });
   await ApiKey.deleteMany({ userId: user._id });
 
-  await logActivity({ userId: (req as any).user._id, action: 'User Deleted', type: 'admin', description: `Deleted user: ${user.email}`, ip: getClientIp(req) });
+  await logActivity({ userId: (req as any).user._id, action: 'User Deleted', resource: 'user', description: `Deleted user: ${user.email}`, ip: getClientIp(req) });
   sendSuccess(res, { message: 'User deleted successfully' });
 });
 
@@ -96,6 +96,6 @@ export const toggleActive = asyncHandler(async (req: Request, res: Response) => 
   await user.save();
 
   const action = user.status === 'active' ? 'Enabled' : 'Disabled';
-  await logActivity({ userId: (req as any).user._id, action: `User ${action}`, type: 'admin', description: `${action} user: ${user.email}`, ip: getClientIp(req) });
+  await logActivity({ userId: (req as any).user._id, action: `User ${action}`, resource: 'user', description: `${action} user: ${user.email}`, ip: getClientIp(req) });
   sendSuccess(res, { message: `User ${action.toLowerCase()} successfully`, status: user.status });
 });

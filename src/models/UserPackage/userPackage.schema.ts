@@ -1,7 +1,7 @@
 import { Schema } from 'mongoose'
-import { IUserPackage } from './userPackage.types'
+import { IPackage } from './userPackage.types'
 
-export const UserPackageSchema = new Schema<IUserPackage>(
+export const UserPackageSchema = new Schema<IPackage>(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -45,6 +45,11 @@ export const UserPackageSchema = new Schema<IUserPackage>(
       default: 0,
       min: 0,
     },
+    creditsRemaining: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     features: {
       type: [String],
       default: [],
@@ -67,6 +72,16 @@ export const UserPackageSchema = new Schema<IUserPackage>(
       type: Date,
       required: true,
     },
+    refill: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    dailyLimitUsed: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,
@@ -76,10 +91,6 @@ export const UserPackageSchema = new Schema<IUserPackage>(
 )
 
 // --- Virtuals ---
-UserPackageSchema.virtual('creditsRemaining').get(function () {
-  return this.credits - this.creditsUsed
-})
-
 UserPackageSchema.virtual('usagePercentage').get(function () {
   return this.credits > 0 ? (this.creditsUsed / this.credits) * 100 : 0
 })

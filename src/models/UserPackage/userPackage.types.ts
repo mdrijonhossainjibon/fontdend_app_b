@@ -1,7 +1,7 @@
-import { Document, Types } from 'mongoose'
+import mongoose, { Document } from 'mongoose'
 
-export interface IUserPackage extends Document {
-  userId: Types.ObjectId
+export interface IPackage extends Document {
+  userId: mongoose.Types.ObjectId
   packageCode: string
   type: 'count' | 'daily' | 'minute'
   name: string
@@ -9,6 +9,7 @@ export interface IUserPackage extends Document {
   billingCycle: 'monthly' | 'yearly'
   credits: number
   creditsUsed: number
+  creditsRemaining: number
   features: string[]
   status: 'active' | 'expired' | 'cancelled'
   autoRenew: boolean
@@ -16,4 +17,6 @@ export interface IUserPackage extends Document {
   endDate: Date
   createdAt: Date
   updatedAt: Date
+  refill?: number
+  dailyLimitUsed?: number
 }

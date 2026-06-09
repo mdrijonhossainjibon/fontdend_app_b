@@ -59,7 +59,7 @@ export const createApiKey = asyncHandler(async (req: Request, res: Response) => 
   const newKey = `pk_live_${Buffer.from(Math.random().toString(36).substring(2) + Date.now().toString(36)).toString('hex').substring(0, 24)}`;
   const apiKey = await ApiKey.create({ userId, name, key: newKey, prefix: 'pk_live', isActive: true });
 
-  await logActivity({ userId: userId.toString(), action: 'API Key Generated', type: 'api', description: `Created new API key: ${name}`, ip: getClientIp(req) });
+  await logActivity({ userId: userId.toString(), action: 'API Key Generated', resource: 'api_key', description: `Created new API key: ${name}`, ip: getClientIp(req) });
 
   emitDashboardUpdate(userId.toString(), { type: 'api-keys' });
 
@@ -83,7 +83,7 @@ export const deleteApiKey = asyncHandler(async (req: Request, res: Response) => 
     throw new ApiError(400, 'Cannot delete the Master Key');
 
   await ApiKey.deleteOne({ _id: id });
-  await logActivity({ userId: userId.toString(), action: 'API Key Deleted', type: 'api', description: `Deleted API key: ${keyToDelete.name}`, ip: getClientIp(req) });
+  await logActivity({ userId: userId.toString(), action: 'API Key Deleted', resource: 'api_key', description: `Deleted API key: ${keyToDelete.name}`, ip: getClientIp(req) });
 
   emitDashboardUpdate(userId.toString(), { type: 'api-keys' });
 
@@ -105,7 +105,7 @@ export const regenerateApiKey = asyncHandler(async (req: Request, res: Response)
   apiKey.usageCount = 0;
   await apiKey.save();
 
-  await logActivity({ userId: userId.toString(), action: 'API Key Regenerated', type: 'api', description: `Regenerated API key: ${apiKey.name}`, ip: getClientIp(req) });
+  await logActivity({ userId: userId.toString(), action: 'API Key Regenerated', resource: 'api_key', description: `Regenerated API key: ${apiKey.name}`, ip: getClientIp(req) });
 
   emitDashboardUpdate(userId.toString(), { type: 'api-keys' });
 
@@ -125,7 +125,24 @@ export const getUserPackages = asyncHandler(async (req: Request, res: Response) 
   const userId = (req as any).user._id;
   const packages = await UserPackage.find({ userId }).sort({ createdAt: -1 });
   sendSuccess(res, {
-    packages: packages.map((pkg: any) => ({ id: pkg._id, type: pkg.type, credits: pkg.credits, creditsUsed: pkg.creditsUsed, status: pkg.status, startDate: pkg.startDate, endDate: pkg.endDate, autoRenew: pkg.autoRenew })),
+    packages: packages.map((pkg: any) => ({
+      id: pkg._id,
+      type: pkg.type,
+      name: pkg.name,
+      price: pkg.price,
+      billingCycle: pkg.billingCycle,
+      credits: pkg.credits,
+      creditsUsed: pkg.creditsUsed,
+      creditsRemaining: pkg.creditsRemaining,
+      features: pkg.features,
+      status: pkg.status,
+      autoRenew: pkg.autoRenew,
+      startDate: pkg.startDate,
+      endDate: pkg.endDate,
+      refill: pkg.refill,
+      dailyLimitUsed: pkg.dailyLimitUsed,
+      packageCode: pkg.packageCode,
+    })),
   });
 });
 
@@ -217,7 +234,7 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
     package: activeUserPackage ? {
       id: activeUserPackage._id, code: activeUserPackage.packageCode, name: activeUserPackage.name,
       price: activeUserPackage.price, credits: activeUserPackage.credits, creditsUsed: activeUserPackage.creditsUsed,
-      creditsRemaining: activeUserPackage.credits,
+      creditsRemaining: activeUserPackage.credits - activeUserPackage.creditsUsed,
       usagePercentage: Math.round(((activeUserPackage.creditsUsed / activeUserPackage.credits) * 100) * 10) / 10,
       features: activeUserPackage.features, autoRenew: activeUserPackage.autoRenew,
       status: activeUserPackage.status, endDate: activeUserPackage.endDate,
