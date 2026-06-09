@@ -1,53 +1,91 @@
 import nodemailer from 'nodemailer'
 import { SmtpSetting } from '@/models/SmtpSetting'
+
 interface SendOTPEmailParams {
   email: string
   otp: string
   name?: string
 }
 
-const getTransporter = async () => {
-  const dbSettings = await SmtpSetting.findOne({ status: 'active' })
+let transporterCache: nodemailer.Transporter | null = null;
 
-  if (dbSettings) {
+const createTransporter = () => {
+  const smtpHost = process.env.SMTP_HOST;
+  if (smtpHost) {
+    const auth = process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS || '' } : undefined;
     return nodemailer.createTransport({
+      host: smtpHost,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+    });
+  }
+  return null;
+};
+
+const getTransporter = async () => {
+  if (transporterCache) return transporterCache;
+
+  // Priority 1: SMTP_HOST from .env
+  transporterCache = createTransporter();
+  if (transporterCache) return transporterCache;
+
+  // Priority 2: DB SMTP setting (admin panel)
+  const dbSettings = await SmtpSetting.findOne({ status: 'active' })
+  if (dbSettings) {
+    transporterCache = nodemailer.createTransport({
       host: dbSettings.host,
       port: dbSettings.port,
-      secure: dbSettings.secure,
+      secure: dbSettings.isSecure,
       auth: {
-        user: dbSettings.user,
-        pass: dbSettings.pass,
+        user: dbSettings.username,
+        pass: dbSettings.password,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     })
+    return transporterCache;
   }
 
-  if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
-    return null
-  }
-
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
+  console.log('⚠️  No SMTP configured. Email sending skipped.');
+  return null;
 }
 
 const getFromEmail = async () => {
   const dbSettings = await SmtpSetting.findOne({ status: 'active' })
-  if (dbSettings?.from) return dbSettings.from
+  if (dbSettings?.fromEmail) return dbSettings.fromEmail
   return process.env.SMTP_FROM || process.env.SMTP_USER
+}
+
+async function trySend(mailOptions: nodemailer.SendMailOptions): Promise<boolean> {
+  try {
+    const transporter = await getTransporter()
+    if (!transporter) return false
+    await transporter.sendMail(mailOptions)
+    return true
+  } catch (err) {
+    // Connection stale — clear cache & retry once
+    transporterCache = null
+    const transporter = await getTransporter()
+    if (!transporter) return false
+    try {
+      await transporter.sendMail(mailOptions)
+      return true
+    } catch (err2) {
+      console.error('Email send failed after retry:', err2)
+      return false
+    }
+  }
 }
 
 export async function sendOTPEmail({ email, otp, name }: SendOTPEmailParams): Promise<boolean> {
   try {
-    const transporter = await getTransporter()
     const fromEmail = await getFromEmail()
-
-    if (!transporter) {
+    if (!fromEmail) {
       console.log('📧 [DEV MODE] OTP Email for', email, ':', otp)
       console.log('⚠️  Configure SMTP settings in .env for production')
       return true
@@ -78,8 +116,7 @@ export async function sendOTPEmail({ email, otp, name }: SendOTPEmailParams): Pr
       text: `Your CaptchaⱮaster verification code is: ${otp}. This code expires in 5 minutes.`,
     }
 
-    await transporter.sendMail(mailOptions)
-    return true
+    return await trySend(mailOptions)
   } catch (error) {
     console.error('Failed to send OTP email:', error)
     return false
@@ -88,10 +125,8 @@ export async function sendOTPEmail({ email, otp, name }: SendOTPEmailParams): Pr
 
 export async function sendPasswordResetEmail({ email, resetToken, name }: { email: string; resetToken: string; name?: string }): Promise<boolean> {
   try {
-    const transporter = await getTransporter()
     const fromEmail = await getFromEmail()
-
-    if (!transporter) {
+    if (!fromEmail) {
       console.log('📧 [DEV MODE] Password Reset for', email, ':', resetToken)
       return true
     }
@@ -138,8 +173,7 @@ export async function sendPasswordResetEmail({ email, resetToken, name }: { emai
       text: `Reset your password by visiting: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, please ignore this email.`,
     }
 
-    await transporter.sendMail(mailOptions)
-    return true
+    return await trySend(mailOptions)
   } catch (error) {
     console.error('Failed to send password reset email:', error)
     return false
@@ -148,14 +182,11 @@ export async function sendPasswordResetEmail({ email, resetToken, name }: { emai
 
 export async function sendWelcomeEmail({ email, name }: { email: string; name?: string }): Promise<boolean> {
   try {
-    const transporter = await getTransporter()
     const fromEmail = await getFromEmail()
-
-    if (!transporter) {
+    if (!fromEmail) {
       console.log('📧 [DEV MODE] Welcome Email for', email)
       return true
     }
-
     const mailOptions = {
       from: `"CaptchaⱮaster" <${fromEmail}>`,
       to: email,
@@ -174,9 +205,7 @@ export async function sendWelcomeEmail({ email, name }: { email: string; name?: 
       `,
       text: `Welcome to CaptchaⱮaster, ${name || 'User'}!`,
     }
-
-    await transporter.sendMail(mailOptions)
-    return true
+    return await trySend(mailOptions)
   } catch (error) {
     console.error('Failed to send welcome email:', error)
     return false

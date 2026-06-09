@@ -81,9 +81,9 @@ export const createDeposit = asyncHandler(async (req: Request, res: Response) =>
     confirmations: requiredConfirmations, requiredConfirmations, fee, notes,
   });
 
-  await User.findByIdAndUpdate((req as any).user._id, { $inc: { balance: amountUSD || 0 } });
+  await User.findByIdAndUpdate((req as any).user._id, { $inc: { credits: amountUSD || 0 } });
 
-  sendSuccess(res, { message: 'Deposit recorded and balance updated', data: deposit }, 201);
+  sendSuccess(res, { message: 'Deposit recorded and credits updated', data: deposit }, 201);
 });
 
 export const getAddress = asyncHandler(async (req: Request, res: Response) => {

@@ -6,7 +6,7 @@ import { sendSuccess } from '@/utils/response';
 import { connectDB } from '@/config';
 import { User } from '@/models/User';
 import { Activity } from '@/models/Activity';
-import { Package } from '@/models/Package';
+import { UserPackage } from '@/models/UserPackage';
 import { ApiKey } from '@/models/ApiKey';
 import { Solution } from '@/models/Solution';
 import { Deposit } from '@/models/Deposit';
@@ -18,7 +18,7 @@ export const getDashboardStats = asyncHandler(async (req: any, res: Response) =>
 
   const [
     totalUsers, activeUsers, totalSolvers, onlineSessions,
-    totalRevenue, todayRevenue, monthlyRevenue, activePackages,
+    totalRevenue, todayRevenue, monthlyRevenue, activeUserPackages,
     recentUsers, recentActivities, currentWeekSales,
     rawExtensions, rawRecentDeposits, totalDepositsCount, totalActivities, totalApiKeys, totalSolutions
   ] = await Promise.all([
@@ -40,7 +40,7 @@ export const getDashboardStats = asyncHandler(async (req: any, res: Response) =>
       const result = await Deposit.aggregate([{ $match: { status: 'completed', createdAt: { $gte: startOfMonth } } }, { $group: { _id: null, total: { $sum: '$amountUSD' } } }]);
       return result[0]?.total || 0;
     })(),
-    Package.countDocuments({ status: 'active' }),
+    UserPackage.countDocuments({ status: 'active' }),
     User.find({ role: 'user' }).sort({ createdAt: -1 }).limit(5).select('name email createdAt'),
     Activity.find().sort({ createdAt: -1 }).limit(5),
     (async () => {
@@ -121,7 +121,7 @@ export const getDashboardStats = asyncHandler(async (req: any, res: Response) =>
   sendSuccess(res, {
     users: { total: totalUsers, active: activeUsers, solvers: totalSolvers, online: onlineSessions },
     revenue: { total: totalRevenue, today: todayRevenue, monthly: monthlyRevenue },
-    packages: { active: activePackages },
+    packages: { active: activeUserPackages },
     system: { activities: totalActivities, apiKeys: totalApiKeys, deposits: totalDepositsCount, solutions: totalSolutions },
     recentUsers, recentActivities, weeklySales: currentWeekSales,
     extensions,

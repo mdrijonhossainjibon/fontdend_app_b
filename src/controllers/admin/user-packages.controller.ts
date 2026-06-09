@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { Package } from '../../models/Package';
+import { UserPackage } from '../../models/UserPackage';
 import { PricingPlan } from '../../models/PricingPlan';
 import { User } from '../../models/User';
 import asyncHandler from '../../utils/asyncHandler';
@@ -11,7 +11,7 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.query;
     if (!userId) return sendError(res, 400, 'userId is required');
 
-    const packages = await Package.find({ userId }).sort({ createdAt: -1 });
+    const packages = await UserPackage.find({ userId }).sort({ createdAt: -1 });
     sendSuccess(res, { packages });
 });
 
@@ -19,26 +19,26 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
     const { packageId, credits } = req.body;
     if (!packageId) return sendError(res, 400, 'packageId is required');
 
-    const pkg = await Package.findById(packageId);
-    if (!pkg) return sendError(res, 404, 'Package not found');
+    const pkg = await UserPackage.findById(packageId);
+    if (!pkg) return sendError(res, 404, 'UserPackage not found');
 
     if (credits !== undefined) pkg.credits = credits;
     await pkg.save();
 
-    sendSuccess(res, { message: 'Package updated successfully', package: pkg });
+    sendSuccess(res, { message: 'UserPackage updated successfully', package: pkg });
 });
 
 export const remove = asyncHandler(async (req: Request, res: Response) => {
     const { packageId } = req.query;
     if (!packageId) return sendError(res, 400, 'packageId is required');
 
-    const pkg = await Package.findByIdAndDelete(packageId);
-    if (!pkg) return sendError(res, 404, 'Package not found');
+    const pkg = await UserPackage.findByIdAndDelete(packageId);
+    if (!pkg) return sendError(res, 404, 'UserPackage not found');
 
-    sendSuccess(res, { message: 'Package removed successfully' });
+    sendSuccess(res, { message: 'UserPackage removed successfully' });
 });
 
-export const assignPackage = asyncHandler(async (req: Request, res: Response) => {
+export const assignUserPackage = asyncHandler(async (req: Request, res: Response) => {
     const { userId, planId, freeTrial, trialDays, trialCredits } = req.body;
     if (!userId) return sendError(res, 400, 'userId is required');
 
@@ -65,9 +65,9 @@ export const assignPackage = asyncHandler(async (req: Request, res: Response) =>
 
         const price = plan.price || 0;
 
-        // Check if user has enough balance
-        if (user.balance < price) {
-            return sendError(res, 400, `Insufficient balance. Required: $${price}, Available: $${user.balance}`);
+        // Check if user has enough credits
+        if (user.credits < price) {
+            return sendError(res, 400, `Insufficient credits. Required: $${price}, Available: $${user.credits}`);
         }
 
         let validityDays = 30;
@@ -98,19 +98,19 @@ export const assignPackage = asyncHandler(async (req: Request, res: Response) =>
             endDate: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000),
         };
 
-        // Deduct balance from user
-        user.balance -= price;
+        // Deduct credits from user
+        user.credits -= price;
         await user.save();
     }
 
-    const newPackage = await Package.create({
+    const newUserPackage = await UserPackage.create({
         userId,
         ...planData,
     });
 
     sendSuccess(res, {
-        message: 'Package assigned successfully',
-        package: newPackage,
-        balance: user.balance,
+        message: 'UserPackage assigned successfully',
+        package: newUserPackage,
+        credits: user.credits,
     });
 });

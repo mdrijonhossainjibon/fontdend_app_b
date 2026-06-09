@@ -3,7 +3,7 @@ import asyncHandler from '@/utils/asyncHandler';
 import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { PricingPlan } from '@/models/PricingPlan';
-import { Package } from '@/models/Package';
+import { UserPackage } from '@/models/UserPackage';
 import { PromoOffer } from '@/models/PromoOffer';
 import { User } from '@/models/User';
 
@@ -39,8 +39,8 @@ export const subscribe = asyncHandler(async (req: Request, res: Response) => {
 
   const fullUser = await User.findById((req as any).user._id);
   if (!fullUser) throw new ApiError(404, 'User account not found');
-  if (fullUser.balance < pricingPlan.price)
-    throw new ApiError(400, `Insufficient balance. Required: $${pricingPlan.price.toFixed(2)}, Available: $${fullUser.balance.toFixed(2)}`);
+  if (fullUser.credits < pricingPlan.price)
+    throw new ApiError(400, `Insufficient credits. Required: $${pricingPlan.price.toFixed(2)}, Available: $${fullUser.credits.toFixed(2)}`);
 
   const startDate = new Date();
   const endDate = new Date();
@@ -65,13 +65,13 @@ export const subscribe = asyncHandler(async (req: Request, res: Response) => {
     status: 'active', autoRenew: false, startDate, endDate,
   };
 
-  const subscription = await Package.findOneAndUpdate(
+  const subscription = await UserPackage.findOneAndUpdate(
     { userId: (req as any).user._id, status: 'active' },
     { $set: packageData },
     { new: true, upsert: true }
   );
 
-  await User.findByIdAndUpdate((req as any).user._id, { $inc: { balance: -pricingPlan.price } });
+  await User.findByIdAndUpdate((req as any).user._id, { $inc: { credits: -pricingPlan.price } });
 
   sendSuccess(res, {
     message: 'Subscription created successfully',

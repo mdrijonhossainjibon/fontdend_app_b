@@ -21,4 +21,4 @@ export { list as listHealthStatuses, run as runHealthCheck } from './health-chec
 export { list as listRedeemCodes, create as createRedeemCode, update as updateRedeemCode, remove as removeRedeemCode } from './redeem-codes.controller';
 export { listPromoOffers, createPromoOffer, updatePromoOffer, removePromoOffer } from './promo-offers.controller';
 
-export { list as listUserPackages, update as updateUserPackage, remove as removeUserPackage, assignPackage } from './user-packages.controller'; 
+export { list as listUserPackages, update as updateUserPackage, remove as removeUserPackage, assignUserPackage } from './user-packages.controller'; 

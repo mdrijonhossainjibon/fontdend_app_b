@@ -4,7 +4,7 @@ import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { connectDB } from '@/config';
 import { User } from '@/models/User';
-import { Package } from '@/models/Package';
+import { UserPackage } from '@/models/UserPackage';
 import { Activity } from '@/models/Activity';
 import { ApiKey } from '@/models/ApiKey';
 import { logActivity } from '@/services/activity';
@@ -51,7 +51,7 @@ export const getById = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findById(req.params.id).select('-password');
   if (!user) throw new ApiError(404, 'User not found');
 
-  const packages = await Package.find({ userId: user._id }).lean();
+  const packages = await UserPackage.find({ userId: user._id }).lean();
   const activities = await Activity.find({ userId: user._id }).sort({ createdAt: -1 }).limit(20).lean();
 
   sendSuccess(res, { user, packages, activities });
@@ -59,13 +59,13 @@ export const getById = asyncHandler(async (req: Request, res: Response) => {
 
 export const update = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
-  const { name, email, role, status, balance, twoFactorEnabled } = req.body;
+  const { name, email, role, status, credits, twoFactorEnabled } = req.body;
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) updateData.email = email.toLowerCase();
   if (role !== undefined) updateData.role = role;
   if (status !== undefined) updateData.status = status;
-  if (balance !== undefined) updateData.balance = balance;
+  if (credits !== undefined) updateData.credits = credits;
   if (twoFactorEnabled !== undefined) updateData.twoFactorEnabled = twoFactorEnabled;
 
   const user = await User.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true }).select('-password');
@@ -80,7 +80,7 @@ export const remove = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findByIdAndDelete(req.params.id);
   if (!user) throw new ApiError(404, 'User not found');
 
-  await Package.deleteMany({ userId: user._id });
+  await UserPackage.deleteMany({ userId: user._id });
   await Activity.deleteMany({ userId: user._id });
   await ApiKey.deleteMany({ userId: user._id });
 

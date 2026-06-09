@@ -5,7 +5,7 @@ import { sendSuccess } from '@/utils/response';
 import { User } from '@/models/User';
 import { ApiKey } from '@/models/ApiKey';
 import { Activity } from '@/models/Activity';
-import { Package } from '@/models/Package';
+import { UserPackage } from '@/models/UserPackage';
 import { logActivity } from '@/services/activity';
 import { emitDashboardUpdate } from '@/sockets';
 
@@ -27,7 +27,7 @@ function formatTimeAgo(date: Date): string {
 export const getApiKeys = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
 
-  const apiKeys = await ApiKey.find({ userId, status: { $ne: 'revoked' } }).sort({ createdAt: 1 });
+  const apiKeys = await ApiKey.find({ userId, isActive: true }).sort({ createdAt: 1 });
   const formattedKeys = apiKeys.map((key: any) => ({
     id: key._id, name: key.name, key: key.key, fullKey: key.key,
     status: key.status, lastUsed: key.lastUsed ? formatTimeAgo(key.lastUsed) : 'Never',
@@ -53,11 +53,11 @@ export const createApiKey = asyncHandler(async (req: Request, res: Response) => 
 
   if (!name) throw new ApiError(400, 'Name is required');
 
-  const count = await ApiKey.countDocuments({ userId, status: { $ne: 'revoked' } });
+  const count = await ApiKey.countDocuments({ userId, isActive: true });
   if (count >= 3) throw new ApiError(400, 'Maximum 3 API keys allowed');
 
   const newKey = `pk_live_${Buffer.from(Math.random().toString(36).substring(2) + Date.now().toString(36)).toString('hex').substring(0, 24)}`;
-  const apiKey = await ApiKey.create({ userId, name, key: newKey, status: 'active' });
+  const apiKey = await ApiKey.create({ userId, name, key: newKey, prefix: 'pk_live', isActive: true });
 
   await logActivity({ userId: userId.toString(), action: 'API Key Generated', type: 'api', description: `Created new API key: ${name}`, ip: getClientIp(req) });
 
@@ -78,7 +78,7 @@ export const deleteApiKey = asyncHandler(async (req: Request, res: Response) => 
   const keyToDelete = await ApiKey.findOne({ _id: id, userId });
   if (!keyToDelete) throw new ApiError(404, 'API key not found');
 
-  const oldestKey = await ApiKey.findOne({ userId, status: { $ne: 'revoked' } }).sort({ createdAt: 1 });
+  const oldestKey = await ApiKey.findOne({ userId, isActive: true }).sort({ createdAt: 1 });
   if (oldestKey && oldestKey._id.toString() === keyToDelete._id.toString())
     throw new ApiError(400, 'Cannot delete the Master Key');
 
@@ -119,46 +119,46 @@ export const regenerateApiKey = asyncHandler(async (req: Request, res: Response)
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Packages
+// UserPackages
 // ─────────────────────────────────────────────────────────────────────────────
-export const getPackages = asyncHandler(async (req: Request, res: Response) => {
+export const getUserPackages = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
-  const packages = await Package.find({ userId }).sort({ createdAt: -1 });
+  const packages = await UserPackage.find({ userId }).sort({ createdAt: -1 });
   sendSuccess(res, {
     packages: packages.map((pkg: any) => ({ id: pkg._id, type: pkg.type, credits: pkg.credits, creditsUsed: pkg.creditsUsed, status: pkg.status, startDate: pkg.startDate, endDate: pkg.endDate, autoRenew: pkg.autoRenew })),
   });
 });
 
-export const updatePackageAutoRenew = asyncHandler(async (req: Request, res: Response) => {
+export const updateUserPackageAutoRenew = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
   const { autoRenew } = req.body;
 
   if (typeof autoRenew !== 'boolean') throw new ApiError(400, 'autoRenew must be a boolean');
 
-  const activePackage = await Package.findOne({ userId, status: 'active', endDate: { $gt: new Date() } });
-  if (!activePackage) throw new ApiError(404, 'No active package found');
+  const activeUserPackage = await UserPackage.findOne({ userId, status: 'active', endDate: { $gt: new Date() } });
+  if (!activeUserPackage) throw new ApiError(404, 'No active package found');
 
-  activePackage.autoRenew = autoRenew;
-  await activePackage.save();
+  activeUserPackage.autoRenew = autoRenew;
+  await activeUserPackage.save();
 
   emitDashboardUpdate(userId.toString(), { type: 'package' });
 
-  sendSuccess(res, { message: `Auto-renew ${autoRenew ? 'enabled' : 'disabled'}`, autoRenew: activePackage.autoRenew });
+  sendSuccess(res, { message: `Auto-renew ${autoRenew ? 'enabled' : 'disabled'}`, autoRenew: activeUserPackage.autoRenew });
 });
 
-export const cancelPackage = asyncHandler(async (req: Request, res: Response) => {
+export const cancelUserPackage = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
 
-  const activePackage = await Package.findOneAndUpdate(
+  const activeUserPackage = await UserPackage.findOneAndUpdate(
     { userId, status: 'active', endDate: { $gt: new Date() } },
     { status: 'cancelled', autoRenew: false },
     { new: true }
   );
-  if (!activePackage) throw new ApiError(404, 'No active package found');
+  if (!activeUserPackage) throw new ApiError(404, 'No active package found');
 
   emitDashboardUpdate(userId.toString(), { type: 'package' });
 
-  sendSuccess(res, { message: 'Package cancelled successfully' });
+  sendSuccess(res, { message: 'UserPackage cancelled successfully' });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const activePackage = await Package.findOne({ userId, status: 'active' });
+  const activeUserPackage = await UserPackage.findOne({ userId, status: 'active' });
 
   const now = new Date();
   const tomorrow = new Date(today);
@@ -201,26 +201,26 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
   const hoursUntilReset = Math.floor(msUntilReset / (1000 * 60 * 60));
   const minutesUntilReset = Math.floor((msUntilReset % (1000 * 60 * 60)) / (1000 * 60));
   const resetsIn = `${hoursUntilReset}h ${minutesUntilReset}m`;
-  const percentage = activePackage ? (activePackage.creditsUsed / activePackage.credits) * 100 : 0;
+  const percentage = activeUserPackage ? (activeUserPackage.creditsUsed / activeUserPackage.credits) * 100 : 0;
 
   sendSuccess(res, {
-    user: { id: user._id, name: user.name, email: user.email, balance: user.balance, role: user.role },
+    user: { id: user._id, name: user.name, email: user.email, credits: user.credits, role: user.role },
     dailyUsage: {
-      used: activePackage ? activePackage.creditsUsed : 0,
-      total: activePackage ? activePackage.credits : 0,
+      used: activeUserPackage ? activeUserPackage.creditsUsed : 0,
+      total: activeUserPackage ? activeUserPackage.credits : 0,
       percentage: Math.round(percentage * 10) / 10,
-      resetsIn: activePackage ? resetsIn : null,
-      totalRequests: activePackage ? activePackage.creditsUsed : 0,
-      requestsLeft: activePackage ? activePackage.credits - activePackage.creditsUsed : 0,
-      type: activePackage ? activePackage.type : null,
+      resetsIn: activeUserPackage ? resetsIn : null,
+      totalRequests: activeUserPackage ? activeUserPackage.creditsUsed : 0,
+      requestsLeft: activeUserPackage ? activeUserPackage.credits - activeUserPackage.creditsUsed : 0,
+      type: activeUserPackage ? activeUserPackage.type : null,
     },
-    package: activePackage ? {
-      id: activePackage._id, code: activePackage.packageCode, name: activePackage.name,
-      price: activePackage.price, credits: activePackage.credits, creditsUsed: activePackage.creditsUsed,
-      creditsRemaining: activePackage.credits,
-      usagePercentage: Math.round(((activePackage.creditsUsed / activePackage.credits) * 100) * 10) / 10,
-      features: activePackage.features, autoRenew: activePackage.autoRenew,
-      status: activePackage.status, endDate: activePackage.endDate,
+    package: activeUserPackage ? {
+      id: activeUserPackage._id, code: activeUserPackage.packageCode, name: activeUserPackage.name,
+      price: activeUserPackage.price, credits: activeUserPackage.credits, creditsUsed: activeUserPackage.creditsUsed,
+      creditsRemaining: activeUserPackage.credits,
+      usagePercentage: Math.round(((activeUserPackage.creditsUsed / activeUserPackage.credits) * 100) * 10) / 10,
+      features: activeUserPackage.features, autoRenew: activeUserPackage.autoRenew,
+      status: activeUserPackage.status, endDate: activeUserPackage.endDate,
     } : null,
   });
 });

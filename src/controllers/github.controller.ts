@@ -87,12 +87,12 @@ export const callback = asyncHandler(async (req: Request, res: Response) => {
   if (user) {
     if (!user.oauthProvider) { user.oauthProvider = 'github'; user.oauthId = githubId; await user.save(); }
   } else {
-    user = await User.create({ email: email.toLowerCase(), name, oauthProvider: 'github', oauthId: githubId, balance: 0, role: 'user' });
+    user = await User.create({ email: email.toLowerCase(), name, oauthProvider: 'github', oauthId: githubId, credits: 0, role: 'user' });
   }
 
   if (user.status === 'inactive') return res.redirect(env.FRONTEND_URL + '/auth/login?error=account_deactivated');
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', balance: user.balance }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', credits: user.credits }).jwtToken;
   res.cookie('oauth_state', '', { maxAge: 0, path: '/' });
   res.redirect(env.FRONTEND_URL + '/dashboard?token=' + token);
 });

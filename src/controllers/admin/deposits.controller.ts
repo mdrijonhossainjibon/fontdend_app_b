@@ -170,7 +170,7 @@ export const approve = asyncHandler(async (req: Request, res: Response) => {
   if (!deposit) throw new ApiError(404, 'Deposit not found');
 
   if (deposit.userId) {
-    await User.findByIdAndUpdate(deposit.userId, { $inc: { balance: deposit.amountUSD || deposit.amount } });
+    await User.findByIdAndUpdate(deposit.userId, { $inc: { credits: deposit.amountUSD || deposit.amount } });
   }
 
   sendSuccess(res, { message: 'Deposit marked as approved and balance updated', deposit });

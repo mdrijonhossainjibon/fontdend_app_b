@@ -3,7 +3,7 @@ import asyncHandler from '@/utils/asyncHandler';
 import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { User } from '@/models/User';
-import { Package } from '@/models/Package';
+import { UserPackage } from '@/models/UserPackage';
 import { Transaction } from '@/models/Transaction';
 import { Deposit } from '@/models/Deposit';
 import { SystemSetting } from '@/models/SystemSetting';
@@ -41,7 +41,7 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
       const credits = Math.round(parseFloat(payment.amount) * creditsPerDollar);
 
       // Add credits to user's active package
-      const activePkg = await Package.findOne({
+      const activePkg = await UserPackage.findOne({
         userId,
         status: 'active',
         endDate: { $gt: new Date() },
@@ -51,8 +51,8 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
         await activePkg.save();
       }
 
-      // Add balance to user account
-      await User.findByIdAndUpdate(userId, { $inc: { balance: parseFloat(payment.amount) } });
+      // Add credits to user account
+      await User.findByIdAndUpdate(userId, { $inc: { credits: parseFloat(payment.amount) } });
 
       // Create transaction record
       await Transaction.create({
@@ -172,8 +172,8 @@ export const cryptomusWebhook = asyncHandler(async (req: Request, res: Response)
     const credits = Math.round(parseFloat(amount) * creditsPerDollar);
  
 
-    // Add balance
-    await User.findByIdAndUpdate(userId, { $inc: { balance: parseFloat(amount) } });
+    // Add credits
+    await User.findByIdAndUpdate(userId, { $inc: { credits: parseFloat(amount) } });
 
     // Create transaction
     await Transaction.create({

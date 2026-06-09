@@ -38,7 +38,7 @@ router.get('/users', admin.listUsers);
 router.get('/users/packages', admin.listUserPackages);
 router.patch('/users/packages', admin.updateUserPackage);
 router.delete('/users/packages', admin.removeUserPackage);
-router.post('/users/assign-package', admin.assignPackage);
+router.post('/users/assign-package', admin.assignUserPackage);
 
 router.get('/users/:id', admin.getUserById);
 router.patch('/users/:id', admin.updateUser);

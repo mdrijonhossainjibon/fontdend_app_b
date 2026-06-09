@@ -3,7 +3,7 @@ import asyncHandler from '@/utils/asyncHandler';
 import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { User } from '@/models/User';
-import { OTP } from '@/models/OTP';
+import { Otp } from '@/models/Otp';
 import { ApiKey } from '@/models/ApiKey';
 import { PasswordReset } from '@/models/PasswordReset';
 import { createTokens } from '@/services/jwt';
@@ -36,18 +36,18 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   // 2FA check
   if (user.twoFactorEnabled) {
     const otpCode = generateOTP();
-    await OTP.deleteMany({ email: user.email });
-    await OTP.create({ email: user.email, otp: otpCode, expiresAt: new Date(Date.now() + 5 * 60 * 1000) });
+    await Otp.deleteMany({ email: user.email });
+    await Otp.create({ email: user.email, otp: otpCode, expiresAt: new Date(Date.now() + 5 * 60 * 1000) });
     await sendOTPEmail({ email: user.email, otp: otpCode, name: user.name });
-    return sendSuccess(res, { requiresOTP: true, message: 'OTP sent to your email', email: user.email });
+    return sendSuccess(res, { requiresOtp: true, message: 'Otp sent to your email', email: user.email });
   }
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', balance: user.balance }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', credits: user.credits }).jwtToken;
 
   sendSuccess(res, {
-    requiresOTP: false,
+    requiresOtp: false,
     token,
-    user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role || 'user' },
+    user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role || 'user' },
   });
 });
 
@@ -75,15 +75,15 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const referralCode = generateReferralCode(name);
-  const user = await User.create({ name, email: emailLower, password, twoFactorEnabled: false, balance: 0, status: 'active', role: 'user', lastLoginIp: currentIp, referralCode, referredBy });
+  const user = await User.create({ name, email: emailLower, password, twoFactorEnabled: false, credits: 0, status: 'active', role: 'user', lastLoginIp: currentIp, referralCode, referredBy });
 
   // Create referral record
   if (referredBy) {
     await Referral.create({
-      referrerUserId: referredBy,
-      referredUserId: user._id,
-      status: 'active',
-      commissionEarned: 0,
+      referrerId: referredBy,
+      referredId: user._id,
+      code: req.body.referralCode,
+      status: 'pending',
     });
   }
 
@@ -106,11 +106,12 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     await ApiKey.create({
       userId: user._id, name: 'Default Key',
       key: `pk_live_${Buffer.from(Math.random().toString(36).substring(2) + Date.now().toString(36)).toString('hex').substring(0, 24)}`,
-      status: 'active',
+      prefix: 'pk_live',
+      isActive: true,
     });
   }
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: 'user', balance: user.balance }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: 'user', credits: user.credits }).jwtToken;
 
   sendSuccess(res, { message: 'Account created successfully.', token, email: user.email, requiresVerification: false }, 201);
 });
@@ -118,26 +119,26 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   const { email, otp } = req.body;
 
-  if (!email || !otp) throw new ApiError(400, 'Email and OTP are required');
+  if (!email || !otp) throw new ApiError(400, 'Email and Otp are required');
 
-  const otpRecord = await OTP.findOne({ email: email.toLowerCase(), otp });
-  if (!otpRecord) throw new ApiError(401, 'Invalid OTP');
+  const otpRecord = await Otp.findOne({ email: email.toLowerCase(), otp });
+  if (!otpRecord) throw new ApiError(401, 'Invalid Otp');
   if (otpRecord.expiresAt < new Date()) {
-    await OTP.deleteOne({ _id: otpRecord._id });
-    throw new ApiError(401, 'OTP has expired');
+    await Otp.deleteOne({ _id: otpRecord._id });
+    throw new ApiError(401, 'Otp has expired');
   }
 
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user) throw new ApiError(404, 'User not found');
 
-  await OTP.deleteOne({ _id: otpRecord._id });
+  await Otp.deleteOne({ _id: otpRecord._id });
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', balance: user.balance }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', credits: user.credits }).jwtToken;
 
   sendSuccess(res, {
     message: 'Login successful',
     token,
-    user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role || 'user' },
+    user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role || 'user' },
   });
 });
 
@@ -148,7 +149,7 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = (req as any).user;
   sendSuccess(res, {
-    user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
+    user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
   });
 });
 
@@ -158,7 +159,7 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
   if (name) user.name = name;
   if (email) user.email = email.toLowerCase();
   await user.save();
-  sendSuccess(res, { user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role } });
+  sendSuccess(res, { user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role } });
 });
 
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
@@ -171,7 +172,6 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
   const rawToken = PasswordReset.generateToken();
   await PasswordReset.create({
     userId: user._id,
-    email: user.email,
     token: rawToken,
     expiresAt: new Date(Date.now() + 60 * 60 * 1000),
   });

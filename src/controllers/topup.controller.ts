@@ -3,7 +3,7 @@ import asyncHandler from '@/utils/asyncHandler';
 import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { User } from '@/models/User';
-import { Package } from '@/models/Package';
+import { UserPackage } from '@/models/UserPackage';
 import { Transaction } from '@/models/Transaction';
 import { Deposit } from '@/models/Deposit';
 import { PromoCode } from '@/models/PromoCode';
@@ -12,26 +12,26 @@ import { PricingPlan } from '@/models/PricingPlan';
 import { createInvoice as cryptomusCreateInvoice } from '@/services/cryptomus';
 
 // GET /topup/active-package
-export const getActivePackage = asyncHandler(async (req: Request, res: Response) => {
+export const getActiveUserPackage = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
 
-  const user = await User.findById(userId).select('balance');
+  const user = await User.findById(userId).select('credits');
   if (!user) throw new ApiError(404, 'User not found');
 
-  const activePackage = await Package.findOne({
+  const activeUserPackage = await UserPackage.findOne({
     userId,
     status: 'active',
     endDate: { $gt: new Date() }
   });
 
   sendSuccess(res, {
-    balance: user.balance,
-    activePackage: activePackage
+    credits: user.credits,
+    activeUserPackage: activeUserPackage
       ? {
-          code: activePackage.packageCode,
-          name: activePackage.name,
-          credits: activePackage.credits,
-          creditsUsed: activePackage.creditsUsed,
+          code: activeUserPackage.packageCode,
+          name: activeUserPackage.name,
+          credits: activeUserPackage.credits,
+          creditsUsed: activeUserPackage.creditsUsed,
         }
       : null,
   });
@@ -82,19 +82,19 @@ export const buyCredits = asyncHandler(async (req: Request, res: Response) => {
 
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, 'User not found');
-  if (user.balance < price) throw new ApiError(400, 'Insufficient balance');
+  if (user.credits < price) throw new ApiError(400, 'Insufficient credits');
 
-  const activePackage = await Package.findOne({
+  const activeUserPackage = await UserPackage.findOne({
     userId,
     status: 'active',
     endDate: { $gt: new Date() }
   });
-  if (!activePackage) throw new ApiError(400, 'No active package found');
+  if (!activeUserPackage) throw new ApiError(400, 'No active package found');
 
-  user.balance = Math.round((user.balance - price) * 100) / 100;
-  activePackage.credits += credits;
+  user.credits = Math.round((user.credits - price) * 100) / 100;
+  activeUserPackage.credits += credits;
   await user.save();
-  await activePackage.save();
+  await activeUserPackage.save();
 
   const msg = 'Successfully added ' + credits.toLocaleString() + ' credits to your package.';
 
@@ -147,12 +147,12 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
 
     if (!plan) throw new ApiError(400, 'Linked package not found');
 
-    // Create a new Package from the PricingPlan
+    // Create a new UserPackage from the PricingPlan
     const now = new Date();
     const endDate = new Date(now);
     endDate.setDate(endDate.getDate() + (plan.validityDays || 30));
 
-    const userPackage = await Package.create({
+    const userUserPackage = await UserPackage.create({
       userId,
       packageCode: plan.code,
       type: plan.type,
@@ -169,8 +169,8 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
     });
 
     // Deactivate any existing active packages
-    await Package.updateMany(
-      { userId, status: 'active', _id: { $ne: userPackage._id } },
+    await UserPackage.updateMany(
+      { userId, status: 'active', _id: { $ne: userUserPackage._id } },
       { $set: { status: 'cancelled' } }
     );
 
@@ -183,7 +183,7 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
       userId,
       type: 'redeem',
       credits: plan.count || 0,
-      label: `Package: ${plan.code}`,
+      label: `UserPackage: ${plan.code}`,
       meta: normalizedCode,
     });
 
@@ -199,7 +199,7 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, {
       data: {
         creditsAdded: plan.count || 0,
-        totalCredits: userPackage.credits,
+        totalCredits: userUserPackage.credits,
         code: normalizedCode,
         package: pkgInfo,
       },
@@ -207,16 +207,16 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Default: add credits to existing active package
-  const activePackage = await Package.findOne({
+  const activeUserPackage = await UserPackage.findOne({
     userId,
     status: 'active',
     endDate: { $gt: new Date() }
   });
-  if (!activePackage) throw new ApiError(400, 'No active package found');
+  if (!activeUserPackage) throw new ApiError(400, 'No active package found');
 
   // Add credits
-  activePackage.credits += promo.credits;
-  await activePackage.save();
+  activeUserPackage.credits += promo.credits;
+  await activeUserPackage.save();
 
   // Increment usage counter
   promo.currentUses += 1;
@@ -234,7 +234,7 @@ export const redeemCode = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, {
     data: {
       creditsAdded: promo.credits,
-      totalCredits: activePackage.credits,
+      totalCredits: activeUserPackage.credits,
       code: normalizedCode,
     },
   });
