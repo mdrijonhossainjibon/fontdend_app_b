@@ -35,9 +35,15 @@ export function createApp(): Express {
   // ───────────────────────────────────────────────────────────────────────────
   // Fingerprint / request signing verification
   // ───────────────────────────────────────────────────────────────────────────
-  // auth-fingerprint middleware — skip upload-model (handled by JWT auth + multer)
+  // auth-fingerprint middleware — skip routes that must be publicly accessible
   app.use((req, res, next) => {
-    if (req.path === '/api/admin/upload-model') return next();
+    const skipPaths = [
+      '/api/admin/upload-model',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/api/auth/reset-password/verify',
+    ];
+    if (skipPaths.some(p => req.path.startsWith(p))) return next();
     (fingerprintAuth('signature', env.AUTH_FINGERPRINT_SECRET) as any)(req, res, next);
   });
 

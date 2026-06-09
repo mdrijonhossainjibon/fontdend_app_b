@@ -4,6 +4,7 @@ import { Response } from 'express';
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-fallback-secret');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret';
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as string & jwt.SignOptions['expiresIn'];
 
 export interface TokenPayload {
   userId: string;
@@ -17,7 +18,7 @@ export async function createJoseToken(payload: TokenPayload): Promise<string> {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('24h')
+    .setExpirationTime(JWT_EXPIRES_IN)
     .sign(SECRET);
 }
 
@@ -33,7 +34,7 @@ export async function verifyJoseToken(token: string): Promise<TokenPayload | nul
 
 // Create jsonwebtoken (for Bearer header - API clients)
 export function createJwtToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 // Verify jsonwebtoken
@@ -48,8 +49,8 @@ export function verifyJwtToken(token: string): TokenPayload | null {
 // Unified create - returns both token formats
 export function createTokens(payload: TokenPayload) {
   return {
-    joseToken: jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' }),
-    jwtToken: jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' }),
+    joseToken: jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN }),
+    jwtToken: jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN }),
   };
 }
 
@@ -72,7 +73,7 @@ export function setAuthCookie(res: Response, token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',
   });
 }

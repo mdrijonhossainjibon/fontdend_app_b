@@ -7,7 +7,7 @@ interface SendOTPEmailParams {
 }
 
 const getTransporter = async () => {
-  const dbSettings = await SmtpSetting.findOne({ isActive: true })
+  const dbSettings = await SmtpSetting.findOne({ status: 'active' })
 
   if (dbSettings) {
     return nodemailer.createTransport({
@@ -37,7 +37,7 @@ const getTransporter = async () => {
 }
 
 const getFromEmail = async () => {
-  const dbSettings = await SmtpSetting.findOne({ isActive: true })
+  const dbSettings = await SmtpSetting.findOne({ status: 'active' })
   if (dbSettings?.from) return dbSettings.from
   return process.env.SMTP_FROM || process.env.SMTP_USER
 }

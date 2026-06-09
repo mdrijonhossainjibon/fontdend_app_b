@@ -45,6 +45,7 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
   const googleId = profile.sub || profile.id;
   const email = profile.email;
   const name = profile.name || profile.given_name || '';
+  const avatar = profile.picture;
 
   if (!email) throw new ApiError(400, 'Google account has no email');
 
@@ -54,12 +55,14 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
     if (!user.oauthProvider) {
       user.oauthProvider = 'google';
       user.oauthId = googleId;
-      await user.save();
     }
+    if (avatar) user.avatar = avatar;
+    await user.save();
   } else {
     user = await User.create({
       email: email.toLowerCase(),
       name,
+      avatar,
       oauthProvider: 'google',
       oauthId: googleId,
       balance: 0,
@@ -82,6 +85,7 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
       id: user._id,
       email: user.email,
       name: user.name,
+      avatar: user.avatar,
       balance: user.balance,
       role: user.role || 'user',
     },
@@ -137,6 +141,7 @@ export const callback = asyncHandler(async (req, res) => {
   const googleId = payload.sub;
   const email = payload.email;
   const name = payload.name || payload.given_name || '';
+  const avatar = payload.picture;
 
   if (!email) return res.redirect(env.FRONTEND_URL + '/auth/login?error=no_email');
   let user = await User.findOne({ email: email.toLowerCase() });
@@ -145,11 +150,12 @@ export const callback = asyncHandler(async (req, res) => {
     if (!user.oauthProvider) {
       user.oauthProvider = 'google';
       user.oauthId = googleId;
-      await user.save();
     }
+    if (avatar) user.avatar = avatar;
+    await user.save();
   } else {
     user = await User.create({
-      email: email.toLowerCase(), name, oauthProvider: 'google', oauthId: googleId,
+      email: email.toLowerCase(), name, avatar, oauthProvider: 'google', oauthId: googleId,
       balance: 0, role: 'user',
     });
   }

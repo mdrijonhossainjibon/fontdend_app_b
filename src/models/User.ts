@@ -15,6 +15,7 @@ export interface IUser extends Document {
     role: string
     oauthProvider?: string
     oauthId?: string
+    avatar?: string
     lastLoginIp?: string
     createdAt: Date
     updatedAt: Date
@@ -72,6 +73,10 @@ const UserSchema: Schema<IUser> = new Schema(
             default: null,
         },
         oauthId: {
+            type: String,
+            default: null,
+        },
+        avatar: {
             type: String,
             default: null,
         },

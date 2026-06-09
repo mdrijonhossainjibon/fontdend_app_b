@@ -47,7 +47,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, {
     requiresOTP: false,
     token,
-    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role || 'user' },
+    user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role || 'user' },
   });
 });
 
@@ -137,7 +137,7 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, {
     message: 'Login successful',
     token,
-    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role || 'user' },
+    user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role || 'user' },
   });
 });
 
@@ -148,7 +148,7 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = (req as any).user;
   sendSuccess(res, {
-    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
+    user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
   });
 });
 
@@ -158,7 +158,7 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
   if (name) user.name = name;
   if (email) user.email = email.toLowerCase();
   await user.save();
-  sendSuccess(res, { user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role } });
+  sendSuccess(res, { user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, balance: user.balance, role: user.role } });
 });
 
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
