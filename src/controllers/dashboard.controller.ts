@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import asyncHandler from '@/utils/asyncHandler';
 import { ApiError } from '@/utils/ApiError';
@@ -27,7 +28,7 @@ function formatTimeAgo(date: Date): string {
 export const getApiKeys = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
 
-  const apiKeys = await ApiKey.find({ userId, isActive: true }).sort({ createdAt: 1 });
+  const apiKeys = await ApiKey.find({ userId, status: 'active' }).sort({ createdAt: 1 });
   const formattedKeys = apiKeys.map((key: any) => ({
     id: key._id, name: key.name, key: key.key, fullKey: key.key,
     status: key.status, lastUsed: key.lastUsed ? formatTimeAgo(key.lastUsed) : 'Never',
@@ -53,11 +54,11 @@ export const createApiKey = asyncHandler(async (req: Request, res: Response) => 
 
   if (!name) throw new ApiError(400, 'Name is required');
 
-  const count = await ApiKey.countDocuments({ userId, isActive: true });
+  const count = await ApiKey.countDocuments({ userId, status: 'active' });
   if (count >= 3) throw new ApiError(400, 'Maximum 3 API keys allowed');
 
-  const newKey = `pk_live_${Buffer.from(Math.random().toString(36).substring(2) + Date.now().toString(36)).toString('hex').substring(0, 24)}`;
-  const apiKey = await ApiKey.create({ userId, name, key: newKey, prefix: 'pk_live', isActive: true });
+  const newKey = 'pk_live_' + crypto.randomBytes(24).toString('hex');
+  const apiKey = await ApiKey.create({ userId, name, key: newKey, prefix: 'pk_live', status: 'active' });
 
   await logActivity({ userId: userId.toString(), action: 'API Key Generated', resource: 'api_key', description: `Created new API key: ${name}`, ip: getClientIp(req) });
 
@@ -78,7 +79,7 @@ export const deleteApiKey = asyncHandler(async (req: Request, res: Response) => 
   const keyToDelete = await ApiKey.findOne({ _id: id, userId });
   if (!keyToDelete) throw new ApiError(404, 'API key not found');
 
-  const oldestKey = await ApiKey.findOne({ userId, isActive: true }).sort({ createdAt: 1 });
+  const oldestKey = await ApiKey.findOne({ userId, status: 'active' }).sort({ createdAt: 1 });
   if (oldestKey && oldestKey._id.toString() === keyToDelete._id.toString())
     throw new ApiError(400, 'Cannot delete the Master Key');
 
@@ -99,7 +100,7 @@ export const regenerateApiKey = asyncHandler(async (req: Request, res: Response)
   const apiKey = await ApiKey.findOne({ _id: id, userId });
   if (!apiKey) throw new ApiError(404, 'API key not found');
 
-  const newKey = `pk_live_${Buffer.from(Math.random().toString(36).substring(2) + Date.now().toString(36)).toString('hex').substring(0, 24)}`;
+  const newKey = 'pk_live_' + crypto.randomBytes(24).toString('hex');
   apiKey.key = newKey;
   apiKey.lastUsed = undefined;
   apiKey.usageCount = 0;

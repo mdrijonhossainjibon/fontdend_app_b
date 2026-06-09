@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import asyncHandler from '@/utils/asyncHandler';
 import { ApiError } from '@/utils/ApiError';
@@ -51,10 +52,9 @@ export const getById = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findById(req.params.id).select('-password');
   if (!user) throw new ApiError(404, 'User not found');
 
-  const packages = await UserPackage.find({ userId: user._id }).lean();
-  const activities = await Activity.find({ userId: user._id }).sort({ createdAt: -1 }).limit(20).lean();
+  const packages = await UserPackage.find({ userId: user._id, status: { $ne: 'cancelled' } }).lean();
 
-  sendSuccess(res, { user, packages, activities });
+  sendSuccess(res, { user, packages });
 });
 
 export const update = asyncHandler(async (req: Request, res: Response) => {
@@ -98,4 +98,123 @@ export const toggleActive = asyncHandler(async (req: Request, res: Response) => 
   const action = user.status === 'active' ? 'Enabled' : 'Disabled';
   await logActivity({ userId: (req as any).user._id, action: `User ${action}`, resource: 'user', description: `${action} user: ${user.email}`, ip: getClientIp(req) });
   sendSuccess(res, { message: `User ${action.toLowerCase()} successfully`, status: user.status });
+});
+
+// ─── API Key Management (Admin) ────────────────────────────
+
+export const getUserApiKeys = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const { id } = req.params;
+
+  const user = await User.findById(id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const keys = await ApiKey.find({ userId: id, status: 'active' }).sort({ createdAt: 1 }).lean();
+  const formattedKeys = keys.map((k: any, i: number) => ({
+    id: k._id,
+    name: i === 0 ? 'Master Key' : k.name,
+    key: k.key ? k.key.substring(0, 16) + '...' : '',
+    fullKey: k.key,
+    status: k.status,
+    isMaster: i === 0,
+    lastUsed: k.lastUsed || null,
+    usageCount: k.usageCount || 0,
+    createdAt: k.createdAt,
+    updatedAt: k.updatedAt,
+  }));
+
+  sendSuccess(res, { apiKeys: formattedKeys });
+});
+
+export const createUserApiKey = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const { id } = req.params;
+  const { name } = req.body;
+
+  if (!name) throw new ApiError(400, 'Key name is required');
+
+  const user = await User.findById(id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const count = await ApiKey.countDocuments({ userId: id, status: 'active' });
+  if (count >= 10) throw new ApiError(400, 'User already has maximum number of API keys (10)');
+
+  const rawKey = 'pk_live_' + crypto.randomBytes(24).toString('hex');
+  const displayKey = rawKey.substring(0, 16) + '...';
+
+  const apiKey = await ApiKey.create({
+    userId: id,
+    name,
+    key: rawKey,
+    prefix: 'pk_live',
+    status: 'active',
+  });
+
+  await logActivity({ userId: (req as any).user._id, action: 'API Key Generated (Admin)', resource: 'apiKey', description: `Admin generated API key "${name}" for user ${user.email}`, ip: getClientIp(req) });
+
+  sendSuccess(res, {
+    apiKey: {
+      id: apiKey._id,
+      name: apiKey.name,
+      key: displayKey,
+      fullKey: rawKey,
+      status: apiKey.status,
+      isMaster: false,
+      lastUsed: null,
+      usageCount: 0,
+      createdAt: apiKey.createdAt,
+    },
+  });
+});
+
+export const deleteUserApiKey = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const { id, keyId } = req.params;
+
+  const user = await User.findById(id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const apiKey = await ApiKey.findOne({ _id: keyId, userId: id });
+  if (!apiKey) throw new ApiError(404, 'API key not found');
+
+  await ApiKey.deleteOne({ _id: keyId });
+
+  await logActivity({ userId: (req as any).user._id, action: 'API Key Deleted (Admin)', resource: 'apiKey', description: `Admin deleted API key "${apiKey.name}" for user ${user.email}`, ip: getClientIp(req) });
+
+  sendSuccess(res, { message: 'API key deleted successfully' });
+});
+
+export const regenerateUserApiKey = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const { id, keyId } = req.params;
+
+  const user = await User.findById(id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const apiKey = await ApiKey.findOne({ _id: keyId, userId: id });
+  if (!apiKey) throw new ApiError(404, 'API key not found');
+
+  const rawKey = 'pk_live_' + crypto.randomBytes(24).toString('hex');
+  const displayKey = rawKey.substring(0, 16) + '...';
+
+  apiKey.key = rawKey;
+  apiKey.lastUsed = null as any;
+  apiKey.usageCount = 0;
+  await apiKey.save();
+
+  await logActivity({ userId: (req as any).user._id, action: 'API Key Regenerated (Admin)', resource: 'apiKey', description: `Admin regenerated API key "${apiKey.name}" for user ${user.email}`, ip: getClientIp(req) });
+
+  sendSuccess(res, {
+    apiKey: {
+      id: apiKey._id,
+      name: apiKey.name,
+      key: displayKey,
+      fullKey: rawKey,
+      status: apiKey.status,
+      isMaster: false,
+      lastUsed: null,
+      usageCount: 0,
+      createdAt: apiKey.createdAt,
+    },
+  });
 });
