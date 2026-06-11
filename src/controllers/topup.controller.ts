@@ -49,7 +49,7 @@ export const getPendingDeposit = asyncHandler(async (req: Request, res: Response
       { expiresAt: { $exists: false } },
       { expiresAt: { $gt: new Date() } }
     ]
-  }).select('amountUSD cryptoName networkName address createdAt expiresAt');
+  }).select('amountUSD cryptoName networkName address status createdAt expiresAt');
 
   // Mark expired deposits as expired in DB
   if (!pendingDeposit) {

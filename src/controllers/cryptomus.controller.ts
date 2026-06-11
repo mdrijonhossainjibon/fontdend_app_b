@@ -90,9 +90,16 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
   }
 
   // Still pending — include address/network when available (after payer selects coin)
+  // Map Cryptomus statuses to our internal statuses
+  const mappedStatus =
+    payment.status === 'check' ? 'pending' :
+    payment.status === 'wait_confirm' ? 'confirming' :
+    payment.status === 'confirming' ? 'confirming' :
+    payment.status;
+
   return sendSuccess(res, {
     data: {
-      status: payment.status,
+      status: mappedStatus,
       address: payment.address,
       network: payment.network,
       payerCurrency: payment.payerCurrency,
