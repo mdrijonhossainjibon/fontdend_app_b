@@ -14,6 +14,7 @@ export interface IDeposit extends Document {
   confirmations: number
   requiredConfirmations: number
   fee?: string
+  txId?: string
   notes?: string
   expiresAt?: Date
   createdAt: Date

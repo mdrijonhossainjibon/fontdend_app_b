@@ -16,6 +16,7 @@ export const DepositSchema = new Schema<IDeposit>(
     confirmations: { type: Number, default: 0 },
     requiredConfirmations: { type: Number, default: 12 },
     fee: { type: String },
+    txId: { type: String, sparse: true },
     notes: { type: String },
     expiresAt: { type: Date },
   },
