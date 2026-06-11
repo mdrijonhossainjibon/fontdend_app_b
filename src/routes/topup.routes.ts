@@ -7,6 +7,7 @@ import {
   getHistory,
   createCryptomusInvoice,
   getInvoice,
+  cancelDeposit,
 } from '@/controllers/topup.controller';
 import { authMiddleware } from '@/middlewares/auth.middleware';
 
@@ -19,6 +20,7 @@ router.post('/redeem', authMiddleware, redeemCode);
 router.get('/history', authMiddleware, getHistory);
 router.post('/cryptomus/create-invoice', authMiddleware, createCryptomusInvoice);
 router.get('/invoice/:invoiceId', authMiddleware, getInvoice);
+router.post('/cancel-deposit', authMiddleware, cancelDeposit);
 
 export default router;
 

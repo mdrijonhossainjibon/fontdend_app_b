@@ -347,6 +347,24 @@ export const getInvoice = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, { data: deposit });
 });
 
+// POST /topup/cancel-deposit
+export const cancelDeposit = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user._id;
+  const { depositId } = req.body;
+
+  if (!depositId) throw new ApiError(400, 'depositId is required');
+
+  const deposit = await Deposit.findOneAndUpdate(
+    { _id: depositId, userId, status: { $in: ['pending', 'confirming'] } },
+    { $set: { status: 'rejected' } },
+    { new: true }
+  );
+
+  if (!deposit) throw new ApiError(404, 'Pending deposit not found');
+
+  sendSuccess(res, { message: 'Deposit cancelled', deposit });
+});
+
 // POST /topup/cryptomus/create-invoice
 export const createCryptomusInvoice = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
