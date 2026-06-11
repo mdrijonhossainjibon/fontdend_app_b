@@ -13,9 +13,9 @@ export interface ICryptoConfig extends Document {
     minDeposit?: number
     fee?: number
     confirmations?: number
-    isActive: boolean
+    status: 'active' | 'inactive'
   }[]
-  isActive: boolean
+  status: 'active' | 'inactive'
   createdAt: Date
   updatedAt: Date
 }

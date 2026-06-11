@@ -12,12 +12,12 @@ import { User } from '@/models/User';
 // ─────────────────────────────────────────────────────────────────────────────
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
   const isAdmin = (req as any).user?.role === 'admin';
-  const query = isAdmin ? {} : { isActive: true };
+  const query = isAdmin ? {} : { status: 'active' };
   const configs = await CryptoConfig.find(query).select('-__v').lean();
 
   const filtered = configs.map((c: any) => ({
     ...c,
-    networks: isAdmin ? c.networks : c.networks.filter((n: any) => n.isActive),
+    networks: isAdmin ? c.networks : c.networks.filter((n: any) => n.status === 'active' || !n.status),
   }));
 
   sendSuccess(res, { data: filtered });
@@ -25,17 +25,17 @@ export const getConfig = asyncHandler(async (req: Request, res: Response) => {
 
 export const createOrUpdateConfig = asyncHandler(async (req: Request, res: Response) => {
   if ((req as any).user?.role !== 'admin') throw new ApiError(401, 'Unauthorized');
-  const { id, name, fullName, icon, networks, isActive } = req.body;
+  const { id, name, fullName, icon, networks, status } = req.body;
   if (!id || !name || !fullName || !networks?.length) throw new ApiError(400, 'Missing required fields');
 
   const existing = await CryptoConfig.findOne({ id });
   if (existing) {
-    Object.assign(existing, { name, fullName, icon, networks, isActive: isActive ?? true });
+    Object.assign(existing, { name, fullName, icon, networks, status: status || 'active' });
     await existing.save();
     return sendSuccess(res, { message: 'Crypto configuration updated', data: existing });
   }
 
-  const created = await CryptoConfig.create({ id, name, fullName, icon, networks, isActive: isActive ?? true });
+  const created = await CryptoConfig.create({ id, name, fullName, icon, networks, status: status || 'active' });
   sendSuccess(res, { message: 'Crypto configuration created', data: created }, 201);
 });
 
@@ -92,10 +92,10 @@ export const getAddress = asyncHandler(async (req: Request, res: Response) => {
 
   if (!cryptoId || !networkId) throw new ApiError(400, 'cryptoId and networkId are required');
 
-  const cryptoConfig = await CryptoConfig.findOne({ id: cryptoId, isActive: true });
+  const cryptoConfig = await CryptoConfig.findOne({ id: cryptoId, status: 'active' });
   if (!cryptoConfig) throw new ApiError(400, 'Invalid cryptocurrency');
 
-  const network = cryptoConfig.networks.find((n: any) => n.id === networkId && n.isActive);
+  const network = cryptoConfig.networks.find((n: any) => n.id === networkId && n.status === 'active');
   if (!network) throw new ApiError(400, 'Invalid network');
 
   let depositAddr = await DepositAddress.findOne({ userId: (req as any).user._id, cryptoId, networkId });

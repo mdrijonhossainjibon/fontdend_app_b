@@ -15,11 +15,11 @@ export const CryptoConfigSchema = new Schema<ICryptoConfig>(
       minDeposit: { type: Number, default: 0 },
       fee: { type: Number, default: 0 },
       confirmations: { type: Number, default: 12 },
-      isActive: { type: Boolean, default: true },
+      status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     }],
-    isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },
   { timestamps: true }
 )
 CryptoConfigSchema.index({ id: 1 })
-CryptoConfigSchema.index({ isActive: 1 })
+CryptoConfigSchema.index({ status: 1 })
