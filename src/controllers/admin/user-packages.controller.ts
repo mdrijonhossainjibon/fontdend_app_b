@@ -15,17 +15,29 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
     sendSuccess(res, { packages });
 });
 
+export const listAll = asyncHandler(async (_req: Request, res: Response) => {
+    const packages = await UserPackage.find()
+        .populate('userId', 'name email avatar')
+        .sort({ createdAt: -1 });
+    sendSuccess(res, { packages });
+});
+
 export const update = asyncHandler(async (req: Request, res: Response) => {
-    const { packageId, credits } = req.body;
+    const { packageId, credits, creditsUsed, status, endDate } = req.body;
     if (!packageId) return sendError(res, 400, 'packageId is required');
 
     const pkg = await UserPackage.findById(packageId);
     if (!pkg) return sendError(res, 404, 'UserPackage not found');
 
     if (credits !== undefined) pkg.credits = credits;
+    if (creditsUsed !== undefined) pkg.creditsUsed = creditsUsed;
+    if (status !== undefined) pkg.status = status;
+    if (endDate !== undefined) pkg.endDate = new Date(endDate);
     await pkg.save();
 
-    sendSuccess(res, { message: 'UserPackage updated successfully', package: pkg });
+    const updated = await UserPackage.findById(pkg._id).populate('userId', 'name email avatar');
+
+    sendSuccess(res, { message: 'UserPackage updated successfully', package: updated });
 });
 
 export const remove = asyncHandler(async (req: Request, res: Response) => {

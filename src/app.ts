@@ -39,6 +39,7 @@ export function createApp(): Express {
   app.use((req, res, next) => {
     const skipPaths = [
       '/api/admin/upload-model',
+      '/api/pricing',
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
       '/api/auth/reset-password/verify',

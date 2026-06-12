@@ -36,6 +36,7 @@ router.get('/users', admin.listUsers);
 
 // User Packages (must be before /users/:id)
 router.get('/users/packages', admin.listUserPackages);
+router.get('/users/packages/all', admin.listAllUserPackages);
 router.patch('/users/packages', admin.updateUserPackage);
 router.delete('/users/packages', admin.removeUserPackage);
 router.post('/users/assign-package', admin.assignUserPackage);
