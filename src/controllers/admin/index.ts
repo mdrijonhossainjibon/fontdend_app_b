@@ -4,6 +4,7 @@ export { list as listWallets, create as createWallet, update as updateWallet, re
 export { list as listDeposits, approve as approveDeposit, reject as rejectDeposit, clearDeposits } from './deposits.controller';
 export { list as listExtensions, create as createExtension, update as updateExtension, remove as removeExtension, scan as scanExtension } from './extensions.controller';
 export { list as listPricingPlans, create as createPricingPlan, update as updatePricingPlan, remove as removePricingPlan } from './pricing-plans.controller';
+export { list as listCreditPackages, create as createCreditPackage, update as updateCreditPackage, remove as removeCreditPackage } from './credit-packages.controller';
 export { listRoles, createRole, updateRole, removeRole, listUsers as listPermissionUsers, updateUserRole, listPermissions } from './permissions.controller';
 export { getSiteSettings, updateSiteSettings, getSmtpSettings, updateSmtpSettings, testSmtpSettings } from './settings.controller';
 export { getStats as getDbStats, cleanActivity as cleanDbActivity } from './database.controller';export { list as listDatabaseCollections, validate as validateCollection, repair as repairCollection, deleteIndex as deleteDatabaseIndex } from './database.controller';
