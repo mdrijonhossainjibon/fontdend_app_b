@@ -39,8 +39,8 @@ export const subscribe = asyncHandler(async (req: Request, res: Response) => {
 
   const fullUser = await User.findById((req as any).user._id);
   if (!fullUser) throw new ApiError(404, 'User account not found');
-  if (fullUser.credits < pricingPlan.price)
-    throw new ApiError(400, `Insufficient credits. Required: $${pricingPlan.price.toFixed(2)}, Available: $${fullUser.credits.toFixed(2)}`);
+  if (fullUser.balance < pricingPlan.price)
+    throw new ApiError(400, `Insufficient credits. Required: $${pricingPlan.price.toFixed(2)}, Available: $${fullUser.balance.toFixed(2)}`);
 
   const startDate = new Date();
   const endDate = new Date();

@@ -13,7 +13,7 @@ export interface IUser extends Document {
   referralCode: string
   referredBy?: Types.ObjectId
   referralEarnings?: number
-  balance?: number
+  balance: number
   twoFactorEnabled: boolean
   twoFactorSecret?: string
   oauthProvider?: string
