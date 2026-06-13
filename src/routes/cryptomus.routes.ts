@@ -4,13 +4,13 @@ import { checkCryptomusPayment, getPaymentByOrderId, cryptomusWebhook } from '@/
 
 const router = Router();
 
-// Webhook — called by Cryptomus (no auth, signature verified inside)
-router.post('/webhook', cryptomusWebhook);
-
-// Check payment status — called by frontend (user must be logged in)
+// Check payment status — called by frontend polling (user must be logged in)
 router.get('/payment-status/:invoiceId', authMiddleware, checkCryptomusPayment);
 
 // Lookup payment by order_id
 router.get('/payment/:orderId', authMiddleware, getPaymentByOrderId);
+
+// Webhook — called by Cryptomus (no auth middleware)
+router.post('/webhook', cryptomusWebhook);
 
 export default router;

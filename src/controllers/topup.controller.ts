@@ -15,7 +15,7 @@ import { createInvoice as cryptomusCreateInvoice } from '@/services/cryptomus';
 export const getActiveUserPackage = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
 
-  const user = await User.findById(userId).select('credits');
+  const user = await User.findById(userId).select('balance');
   if (!user) throw new ApiError(404, 'User not found');
 
   const activeUserPackage = await UserPackage.findOne({
@@ -25,7 +25,7 @@ export const getActiveUserPackage = asyncHandler(async (req: Request, res: Respo
   });
 
   sendSuccess(res, {
-    credits: user.credits,
+    balance: user.balance,
     activeUserPackage: activeUserPackage
       ? {
           code: activeUserPackage.packageCode,
@@ -44,17 +44,17 @@ export const getPendingDeposit = asyncHandler(async (req: Request, res: Response
   // Check for pending deposit (only return valid, non-expired)
   const pendingDeposit = await Deposit.findOne({
     userId,
-    status: { $in: ['pending', 'confirming'] },
+    status: { $in: ['pending', 'confirming', 'checking'] },
     $or: [
       { expiresAt: { $exists: false } },
       { expiresAt: { $gt: new Date() } }
     ]
-  }).select('amountUSD cryptoName networkName address status createdAt expiresAt');
+  }).select('amountUSD cryptoName networkName address status notes createdAt expiresAt');
 
   // Mark expired deposits as expired in DB
   if (!pendingDeposit) {
     await Deposit.updateMany(
-      { userId, status: { $in: ['pending', 'confirming'] }, expiresAt: { $lte: new Date(), $exists: true } },
+      { userId, status: { $in: ['pending', 'confirming', 'checking'] }, expiresAt: { $lte: new Date(), $exists: true } },
       { $set: { status: 'expired' } }
     );
   }
@@ -66,6 +66,8 @@ export const getPendingDeposit = asyncHandler(async (req: Request, res: Response
           cryptoName: pendingDeposit.cryptoName,
           networkName: pendingDeposit.networkName,
           address: pendingDeposit.address,
+          status: pendingDeposit.status,
+          notes: pendingDeposit.notes,
           createdAt: pendingDeposit.createdAt,
           expiresAt: pendingDeposit.expiresAt,
         }
@@ -82,7 +84,7 @@ export const buyCredits = asyncHandler(async (req: Request, res: Response) => {
 
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, 'User not found');
-  if (user.credits < price) throw new ApiError(400, 'Insufficient credits');
+  if (user.balance < price) throw new ApiError(400, 'Insufficient balance');
 
   const activeUserPackage = await UserPackage.findOne({
     userId,
@@ -91,7 +93,7 @@ export const buyCredits = asyncHandler(async (req: Request, res: Response) => {
   });
   if (!activeUserPackage) throw new ApiError(400, 'No active package found');
 
-  user.credits = Math.round((user.credits - price) * 100) / 100;
+  user.balance = Math.round((user.balance - price) * 100) / 100;
   activeUserPackage.credits += credits;
   await user.save();
   await activeUserPackage.save();
@@ -247,7 +249,7 @@ export const getHistory = asyncHandler(async (req: Request, res: Response) => {
 
   // Auto-expire stale deposits
   await Deposit.updateMany(
-    { userId, status: { $in: ['pending', 'confirming'] }, expiresAt: { $lte: new Date(), $exists: true } },
+    { userId, status: { $in: ['pending', 'confirming', 'checking'] }, expiresAt: { $lte: new Date(), $exists: true } },
     { $set: { status: 'expired' } }
   );
 
@@ -355,7 +357,7 @@ export const cancelDeposit = asyncHandler(async (req: Request, res: Response) =>
   if (!depositId) throw new ApiError(400, 'depositId is required');
 
   const deposit = await Deposit.findOneAndUpdate(
-    { _id: depositId, userId, status: { $in: ['pending', 'confirming'] } },
+    { _id: depositId, userId, status: { $in: ['pending', 'confirming', 'checking'] } },
     { $set: { status: 'rejected' } },
     { new: true }
   );
@@ -376,7 +378,7 @@ export const createCryptomusInvoice = asyncHandler(async (req: Request, res: Res
   // Check for existing pending or confirming deposits
   const pendingDeposit = await Deposit.findOne({
     userId,
-    status: { $in: ['pending', 'confirming'] },
+    status: { $in: ['pending', 'confirming', 'checking'] },
     $or: [
       { expiresAt: { $exists: false } },
       { expiresAt: { $gt: new Date() } }

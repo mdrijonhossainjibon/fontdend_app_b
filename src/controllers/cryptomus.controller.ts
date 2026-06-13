@@ -7,13 +7,13 @@ import { UserPackage } from '@/models/UserPackage';
 import { Transaction } from '@/models/Transaction';
 import { Deposit } from '@/models/Deposit';
 import { SystemSetting } from '@/models/SystemSetting';
-import { verifyWebhookSign, checkPaymentStatus, isPaid, isFailed } from '@/services/cryptomus';
-import mongoose from 'mongoose';
+import { checkPaymentStatus, isPaid, isFailed, verifyWebhookSign } from '@/services/cryptomus';
 
 /** Check payment status — called by frontend polling */
 export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
   const { invoiceId } = req.params;
+  console.log(`[payment-status] userId=${userId} invoiceId=${invoiceId}`);
 
   if (!invoiceId) throw new ApiError(400, 'invoiceId is required');
 
@@ -24,12 +24,16 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
   const creditsPerDollar = settings?.cryptomusCreditsPerDollar || 1000;
 
   if (!merchantId || !apiKey) {
+    console.error(`[payment-status] Cryptomus not configured for userId=${userId}`);
     throw new ApiError(500, 'Cryptomus not configured');
   }
 
   const payment = await checkPaymentStatus(invoiceId, merchantId, apiKey);
+  console.log(`[payment-status] invoiceId=${invoiceId} rawStatus=${payment.status} amount=${payment.amount} payerCurrency=${payment.payerCurrency}`);
 
   if (isPaid(payment.status)) {
+    console.log(`[payment-status] PAID detected invoiceId=${invoiceId}`);
+
     // Check if already processed
     const existing = await Transaction.findOne({
       userId,
@@ -38,7 +42,13 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
     });
 
     if (!existing) {
+      console.log(`[payment-status] Processing payment invoiceId=${invoiceId} userId=${userId}`);
       const credits = Math.round(parseFloat(payment.amount) * creditsPerDollar);
+
+      // Get user's current balance for balanceBefore/balanceAfter
+      const userData = await User.findById(userId).select('balance');
+      const balanceBefore = userData?.balance || 0;
+      const balanceAfter = balanceBefore + parseFloat(payment.amount);
 
       // Add credits to user's active package
       const activePkg = await UserPackage.findOne({
@@ -52,7 +62,7 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
       }
 
       // Add credits to user account
-      await User.findByIdAndUpdate(userId, { $inc: { credits: parseFloat(payment.amount) } });
+      await User.findByIdAndUpdate(userId, { $inc: { balance: parseFloat(payment.amount) } });
 
       // Create transaction record
       await Transaction.create({
@@ -60,6 +70,12 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
         type: 'deposit',
         credits,
         amount: parseFloat(payment.amount),
+        balanceBefore,
+        balanceAfter,
+        currency: payment.payerCurrency || 'USDT',
+        description: `${payment.payerCurrency || 'Crypto'} deposit via Cryptomus`,
+        referenceType: 'deposit',
+        referenceId: invoiceId,
         label: `${payment.payerCurrency || 'Crypto'}${payment.network ? ` (${payment.network})` : ''} Top-up`,
         meta: invoiceId,
       });
@@ -92,7 +108,8 @@ export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Resp
   // Still pending — include address/network when available (after payer selects coin)
   // Map Cryptomus statuses to our internal statuses
   const mappedStatus =
-    payment.status === 'check' ? 'pending' :
+    payment.status === 'check' ? 'checking' :
+    payment.status === 'confirm_check' ? 'checking' :
     payment.status === 'wait_confirm' ? 'confirming' :
     payment.status === 'confirming' ? 'confirming' :
     payment.status;
@@ -137,81 +154,110 @@ export const getPaymentByOrderId = asyncHandler(async (req: Request, res: Respon
   });
 });
 
-/** Cryptomus webhook — called by Cryptomus on payment status change */
+/** Cryptomus webhook — called by Cryptomus when payment status changes */
 export const cryptomusWebhook = asyncHandler(async (req: Request, res: Response) => {
+  const rawBody = (req as any).rawBody;
   const sign = req.headers['sign'] as string;
-  const rawBody = JSON.stringify(req.body);
+
+  if (!rawBody || !sign) {
+    console.warn('[cryptomus-webhook] Missing body or sign header');
+    return res.status(400).json({ error: 'Missing body or sign header' });
+  }
 
   // Get credentials
   const settings = await SystemSetting.findOne();
   const apiKey = settings?.cryptomusApiKey?.trim();
-  const merchantId = settings?.cryptomusMerchantId?.trim();
-  const creditsPerDollar = settings?.cryptomusCreditsPerDollar || 1000;
 
-  // Verify webhook signature
-  if (!apiKey || !verifyWebhookSign(rawBody, sign, apiKey)) {
-    console.warn('Cryptomus webhook: invalid signature');
-    return sendSuccess(res, { received: true }); // Always respond 200 to avoid re-delivery
+  if (!apiKey) {
+    console.warn('[cryptomus-webhook] Cryptomus not configured');
+    return res.status(500).json({ error: 'Cryptomus not configured' });
   }
 
-  const { uuid, status, order_id, amount } = req.body;
-
-  if (!uuid || !order_id) {
-    return sendSuccess(res, { received: true });
+  // Verify signature
+  if (!verifyWebhookSign(rawBody, sign, apiKey)) {
+    console.warn('[cryptomus-webhook] Invalid signature');
+    return res.status(403).json({ error: 'Invalid signature' });
   }
 
-  // Extract userId from order_id (format: topup_{userId}_{timestamp})
-  const match = order_id.match(/^topup_([^_]+)_/);
-  if (!match) {
-    console.warn('Cryptomus webhook: invalid order_id format', order_id);
-    return sendSuccess(res, { received: true });
+  const data = JSON.parse(rawBody);
+  const payment = data?.result || data;
+
+  if (!payment?.uuid) {
+    console.warn('[cryptomus-webhook] Missing payment UUID', payment);
+    return res.status(400).json({ error: 'Missing payment UUID' });
   }
 
-  const userId = new mongoose.Types.ObjectId(match[1]);
+  console.log(`[cryptomus-webhook] Received: invoiceId=${payment.uuid} status=${payment.status} amount=${payment.amount}`);
 
-  if (isPaid(status)) {
+  if (isPaid(payment.status)) {
     // Check if already processed
-    const existing = await Transaction.findOne({ meta: uuid, type: 'deposit' });
-    if (existing) {
-      return sendSuccess(res, { received: true }); // Already processed
-    }
-
-    const credits = Math.round(parseFloat(amount) * creditsPerDollar);
- 
-
-    // Add credits
-    await User.findByIdAndUpdate(userId, { $inc: { credits: parseFloat(amount) } });
-
-    // Create transaction
-    await Transaction.create({
-      userId,
+    const existing = await Transaction.findOne({
       type: 'deposit',
-      credits,
-      amount: parseFloat(amount),
-      label: `${req.body.payer_currency || 'Crypto'}${req.body.network ? ` (${req.body.network})` : ''} Top-up`,
-      meta: uuid,
+      meta: payment.uuid,
     });
+
+    if (!existing) {
+      const creditsPerDollar = settings?.cryptomusCreditsPerDollar || 1000;
+      const credits = Math.round(parseFloat(payment.amount) * creditsPerDollar);
+
+      // Find user from deposit record
+      const deposit = await Deposit.findOne({ notes: payment.uuid });
+      if (!deposit) {
+        console.warn(`[cryptomus-webhook] No deposit found for invoice ${payment.uuid}`);
+        return res.status(200).json({ ok: true }); // Ack but don't process
+      }
+
+      const userId = deposit.userId;
+      const userData = await User.findById(userId).select('balance');
+      const balanceBefore = userData?.balance || 0;
+      const balanceAfter = balanceBefore + parseFloat(payment.amount);
+
+      // Add balance to user account
+      await User.findByIdAndUpdate(userId, { $inc: { balance: parseFloat(payment.amount) } });
+
+      // Add credits to user's active package
+      const activePkg = await UserPackage.findOne({
+        userId,
+        status: 'active',
+        endDate: { $gt: new Date() },
+      });
+      if (activePkg) {
+        activePkg.credits += credits;
+        await activePkg.save();
+      }
+
+      // Create transaction record
+      await Transaction.create({
+        userId,
+        type: 'deposit',
+        credits,
+        amount: parseFloat(payment.amount),
+        balanceBefore,
+        balanceAfter,
+        currency: payment.payer_currency || 'USDT',
+        description: `${payment.payer_currency || 'Crypto'} deposit via Cryptomus`,
+        referenceType: 'deposit',
+        referenceId: payment.uuid,
+        label: `${payment.payer_currency || 'Crypto'}${payment.network ? ` (${payment.network})` : ''} Top-up`,
+        meta: payment.uuid,
+      });
+    }
 
     // Update Deposit record status
     await Deposit.findOneAndUpdate(
-      { notes: uuid },
+      { notes: payment.uuid },
       { $set: { status: 'completed' } },
     );
-
-    console.log(`Cryptomus: payment completed for user ${userId}, amount ${amount}, credits ${credits}`);
   }
 
-  if (isFailed(status)) {
-    // Set correct status: expired vs failed
-    const newStatus = status === 'expired' ? 'expired' : 'failed';
+  if (isFailed(payment.status)) {
+    const newStatus = payment.status === 'expired' ? 'expired' : 'failed';
     await Deposit.findOneAndUpdate(
-      { notes: uuid },
+      { notes: payment.uuid },
       { $set: { status: newStatus } },
     );
-
-    console.log(`Cryptomus: payment ${newStatus} for order ${order_id}, status: ${status}`);
   }
 
-  // Always respond 200
-  sendSuccess(res, { received: true });
+  res.status(200).json({ ok: true });
+  return;
 });

@@ -37,16 +37,6 @@ export const UserSchema = new Schema<IUser>(
       type: [String],
       default: ['user'],
     },
-    credits: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    totalCreditsPurchased: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
     balance: {
       type: Number,
       default: 0,

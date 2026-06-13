@@ -53,6 +53,9 @@ export const env = {
   CRYPTOMUS_MERCHANT_ID: process.env.CRYPTOMUS_MERCHANT_ID || '',
   CRYPTOMUS_API_KEY: process.env.CRYPTOMUS_API_KEY || '',
 
+  // Server URL (for webhook callbacks)
+  SERVER_URL: process.env.SERVER_URL || '',
+
   // CORS
   CORS_ORIGIN: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
 

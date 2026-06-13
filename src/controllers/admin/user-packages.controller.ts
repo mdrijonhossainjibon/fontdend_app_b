@@ -78,8 +78,8 @@ export const assignUserPackage = asyncHandler(async (req: Request, res: Response
         const price = plan.price || 0;
 
         // Check if user has enough credits
-        if (user.credits < price) {
-            return sendError(res, 400, `Insufficient credits. Required: $${price}, Available: $${user.credits}`);
+        if (user.balance < price) {
+            return sendError(res, 400, `Insufficient balance. Required: $${price}, Available: $${user.balance}`);
         }
 
         let validityDays = 30;
@@ -111,7 +111,7 @@ export const assignUserPackage = asyncHandler(async (req: Request, res: Response
         };
 
         // Deduct credits from user
-        user.credits -= price;
+        user.balance -= price;
         await user.save();
     }
 
@@ -123,6 +123,6 @@ export const assignUserPackage = asyncHandler(async (req: Request, res: Response
     sendSuccess(res, {
         message: 'UserPackage assigned successfully',
         package: newUserPackage,
-        credits: user.credits,
+        balance: user.balance,
     });
 });

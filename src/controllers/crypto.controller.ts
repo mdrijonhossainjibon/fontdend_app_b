@@ -105,14 +105,14 @@ export const getAddress = asyncHandler(async (req: Request, res: Response) => {
     if (existingAny) {
       depositAddr = await DepositAddress.create({
         userId: (req as any).user._id, cryptoId, networkId,
-        address: existingAny.address, privateKey: existingAny.privateKey, isActive: true,
+        address: existingAny.address, privateKey: existingAny.privateKey, status: 'active',
       });
     } else {
       const { Wallet } = require('ethers');
       const wallet = Wallet.createRandom();
       depositAddr = await DepositAddress.create({
         userId: (req as any).user._id, cryptoId, networkId,
-        address: wallet.address, privateKey: wallet.privateKey, isActive: true,
+        address: wallet.address, privateKey: wallet.privateKey, status: 'active',
       });
     }
   }

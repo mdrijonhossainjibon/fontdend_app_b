@@ -6,8 +6,6 @@ export interface IUser extends Document {
   password: string
   role: string
   roles: string[]
-  credits: number
-  totalCreditsPurchased: number
   status: 'active' | 'inactive' | 'suspended' | 'banned'
   emailVerified: boolean
   referralCode: string

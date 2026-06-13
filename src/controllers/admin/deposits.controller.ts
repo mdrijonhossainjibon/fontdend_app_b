@@ -6,6 +6,45 @@ import { connectDB } from '@/config';
 import { Deposit } from '@/models/Deposit';
 import { Transaction } from '@/models/Transaction';
 import { User } from '@/models/User';
+import { fetchPrices } from '@/services/coin-gecko';
+
+// Map common crypto names to ticker keys for CoinGecko lookup
+const NAME_TO_TICKER: Record<string, string> = {
+  bitcoin: 'btc',
+  ethereum: 'eth',
+  tether: 'usdt',
+  tron: 'trx',
+  ripple: 'xrp',
+  cardano: 'ada',
+  solana: 'sol',
+  polkadot: 'dot',
+  dogecoin: 'doge',
+  litecoin: 'ltc',
+  monero: 'xmr',
+  stellar: 'xlm',
+  cosmos: 'atom',
+  chainlink: 'link',
+  uniswap: 'uni',
+  avalanche: 'avax',
+  polygon: 'matic',
+  binancecoin: 'bnb',
+  filecoin: 'fil',
+  algorand: 'algo',
+  arbitrum: 'arb',
+  aptos: 'apt',
+  sui: 'sui',
+  optimism: 'op',
+  near: 'near',
+  injective: 'inj',
+};
+
+function nameToTicker(name: string): string | null {
+  const lower = name.toLowerCase().trim();
+  // Direct ticker match
+  if (lower.length <= 6 && /^[a-z0-9]+$/.test(lower)) return lower;
+  // Full name match
+  return NAME_TO_TICKER[lower] || null;
+}
 
 function mapDeposit(d: any) {
   return {
@@ -131,7 +170,7 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
 
   const [deposits, depositTotal] = await Promise.all([
     Deposit.find(query)
-      .populate('userId', 'name email username')
+      .populate('userId', 'name email username avatar')
       .sort({ createdAt: -1 })
       .lean(),
     Deposit.countDocuments(query),
@@ -143,7 +182,7 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
   if (includeTransactions) {
     [transactions, txTotal] = await Promise.all([
       Transaction.find(txQuery)
-        .populate('userId', 'name email username')
+        .populate('userId', 'name email username avatar')
         .sort({ createdAt: -1 })
         .lean(),
       Transaction.countDocuments(txQuery),
@@ -153,12 +192,49 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
   const depositMapped = deposits.map(mapDeposit);
   const txMapped = transactions.map(mapTransaction);
 
+  // Deduplicate: exclude Deposit records that have a matching Transaction
+  // (Cryptomus creates both a Deposit and Transaction for the same payment)
+  const txMetaSet = new Set(
+    txMapped.filter((t: any) => t.notes).map((t: any) => t.notes)
+  );
+  const dedupedDeposits = depositMapped.filter(
+    (d: any) => !d.notes || !txMetaSet.has(d.notes)
+  );
+
+  // Auto-fill missing amountUSD via CoinGecko (both directions)
+  const missingUsdEntries = [...dedupedDeposits, ...txMapped].filter(
+    (d: any) => !d.amountUSD || d.amountUSD === 0 || !d.amount || d.amount === 0
+  );
+  if (missingUsdEntries.length > 0) {
+    const tickers = missingUsdEntries
+      .map((d: any) => nameToTicker(d.cryptoName))
+      .filter(Boolean) as string[];
+    if (tickers.length > 0) {
+      const prices = await fetchPrices(tickers);
+      const allMapped = [...dedupedDeposits, ...txMapped];
+      for (const d of allMapped) {
+        const ticker = nameToTicker(d.cryptoName);
+        const price = ticker ? prices[ticker] : undefined;
+        if (!price) continue;
+
+        // amountUSD missing → amount * price
+        if (!d.amountUSD || d.amountUSD === 0) {
+          d.amountUSD = parseFloat((d.amount * price).toFixed(2));
+        }
+        // amount missing (0) → amountUSD / price
+        if (!d.amount || d.amount === 0) {
+          d.amount = parseFloat((d.amountUSD / price).toFixed(6));
+        }
+      }
+    }
+  }
+
   // Merge, sort by createdAt desc, then paginate
-  const merged = [...depositMapped, ...txMapped].sort(
+  const merged = [...dedupedDeposits, ...txMapped].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
-  const total = depositTotal + txTotal;
+  const total = dedupedDeposits.length + txTotal;
   const paged = merged.slice((page - 1) * limit, page * limit);
 
   sendSuccess(res, { deposits: paged, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });

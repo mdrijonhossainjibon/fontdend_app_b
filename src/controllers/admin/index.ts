@@ -16,7 +16,6 @@ export { list as listEmailTemplates, create as createEmailTemplate, update as up
 export { getConfigs as getCryptoConfigs, updateConfig as updateCryptoConfig, getAllDeposits as getAllCryptoDeposits } from './crypto.controller';
 export { list as listAiTrainings, create as createAiTraining, update as updateAiTraining, remove as removeAiTraining, uploadModelToBot } from './ai-training.controller';
 export { list as listSolutions, remove as removeSolution } from './solutions.controller';
-export { list as listDepositAddresses, update as updateDepositAddress, remove as removeDepositAddress } from './deposit-addresses.controller';
 export { list as listHealthStatuses, run as runHealthCheck } from './health-check.controller';
   
 export { list as listRedeemCodes, create as createRedeemCode, update as updateRedeemCode, remove as removeRedeemCode } from './redeem-codes.controller';

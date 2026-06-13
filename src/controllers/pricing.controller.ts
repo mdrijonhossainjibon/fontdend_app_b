@@ -71,7 +71,7 @@ export const subscribe = asyncHandler(async (req: Request, res: Response) => {
     { new: true, upsert: true }
   );
 
-  await User.findByIdAndUpdate((req as any).user._id, { $inc: { credits: -pricingPlan.price } });
+  await User.findByIdAndUpdate((req as any).user._id, { $inc: { balance: -pricingPlan.price } });
 
   sendSuccess(res, {
     message: 'Subscription created successfully',

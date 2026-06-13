@@ -43,6 +43,7 @@ export function createApp(): Express {
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
       '/api/auth/reset-password/verify',
+      '/api/cryptomus/webhook',
     ];
     if (skipPaths.some(p => req.path.startsWith(p))) return next();
     (fingerprintAuth('signature', env.AUTH_FINGERPRINT_SECRET) as any)(req, res, next);
@@ -52,10 +53,14 @@ export function createApp(): Express {
   // Body parsing — raw body for webhook signatures, JSON/form for everything else
   // ───────────────────────────────────────────────────────────────────────────
 
-// ⚠️ Disabled in favor of the existing handleRawBody approach
-// This is now handled in app.ts with a custom middleware
-
-  app.use(express.json({ limit: '10mb' }));
+// Raw body capture for webhook signature verification (stores raw body in req.rawBody)
+// Use verify callback so express.json captures the raw buffer before parsing
+  app.use(express.json({
+    limit: '10mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf.toString();
+    },
+  }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // ───────────────────────────────────────────────────────────────────────────

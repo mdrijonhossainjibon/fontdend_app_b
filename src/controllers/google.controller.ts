@@ -65,7 +65,6 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
       avatar,
       oauthProvider: 'google',
       oauthId: googleId,
-      credits: 0,
       role: 'user',
     });
   }
@@ -76,7 +75,6 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
     userId: user._id.toString(),
     email: user.email,
     role: user.role || 'user',
-    credits: user.credits,
   });
 
   sendSuccess(res, {
@@ -86,7 +84,7 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
       email: user.email,
       name: user.name,
       avatar: user.avatar,
-      credits: user.credits,
+      balance: user.balance,
       role: user.role || 'user',
     },
   });
@@ -156,13 +154,13 @@ export const callback = asyncHandler(async (req, res) => {
   } else {
     user = await User.create({
       email: email.toLowerCase(), name, avatar, oauthProvider: 'google', oauthId: googleId,
-      credits: 0, role: 'user',
+      role: 'user',
     });
   }
 
   if (user.status === 'inactive') return res.redirect(env.FRONTEND_URL + '/auth/login?error=account_deactivated');
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', credits: user.credits }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user' }).jwtToken;
   res.cookie('oauth_state', '', { maxAge: 0, path: '/' });
 
   res.redirect(env.FRONTEND_URL + '/dashboard?token=' + token);

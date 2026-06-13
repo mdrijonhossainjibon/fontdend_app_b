@@ -8,7 +8,7 @@ export const DepositAddressSchema = new Schema<IDepositAddress>(
     network: { type: String, required: true, trim: true },
     address: { type: String, required: true, unique: true, trim: true },
     label: { type: String, trim: true },
-    isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     totalDeposited: { type: Number, default: 0, min: 0 },
     lastDepositedAt: { type: Date },
     cryptoId: { type: String },

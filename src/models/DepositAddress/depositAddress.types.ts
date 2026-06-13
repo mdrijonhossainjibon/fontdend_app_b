@@ -6,7 +6,7 @@ export interface IDepositAddress extends Document {
   network: string
   address: string
   label?: string
-  isActive: boolean
+  status: string
   totalDeposited: number
   lastDepositedAt?: Date
   cryptoId?: string

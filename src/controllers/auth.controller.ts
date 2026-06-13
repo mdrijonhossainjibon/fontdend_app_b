@@ -42,12 +42,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     return sendSuccess(res, { requiresOtp: true, message: 'Otp sent to your email', email: user.email });
   }
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', credits: user.credits }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user' }).jwtToken;
 
   sendSuccess(res, {
     requiresOtp: false,
     token,
-    user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role || 'user' },
+    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role || 'user' },
   });
 });
 
@@ -75,7 +75,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const referralCode = generateReferralCode(name);
-  const user = await User.create({ name, email: emailLower, password, twoFactorEnabled: false, credits: 0, status: 'active', role: 'user', lastLoginIp: currentIp, referralCode, referredBy });
+  const user = await User.create({ name, email: emailLower, password, twoFactorEnabled: false, status: 'active', role: 'user', lastLoginIp: currentIp, referralCode, referredBy });
 
   // Create referral record
   if (referredBy) {
@@ -95,7 +95,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     const settings = await SystemSetting.findOne();
     if (settings?.freeTrialEnabled && !user.freeTrialUsed) {
       const trialCredits = settings.freeTrialCredits ?? 250;
-      user.credits += trialCredits;
+      user.balance += trialCredits;
       user.freeTrialUsed = true;
       await user.save();
     }
@@ -111,7 +111,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     });
   }
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: 'user', credits: user.credits }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: 'user' }).jwtToken;
 
   sendSuccess(res, { message: 'Account created successfully.', token, email: user.email, requiresVerification: false }, 201);
 });
@@ -133,12 +133,12 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
 
   await Otp.deleteOne({ _id: otpRecord._id });
 
-  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user', credits: user.credits }).jwtToken;
+  const token = createTokens({ userId: user._id.toString(), email: user.email, role: user.role || 'user' }).jwtToken;
 
   sendSuccess(res, {
     message: 'Login successful',
     token,
-    user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role || 'user' },
+    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role || 'user' },
   });
 });
 
@@ -149,7 +149,7 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = (req as any).user;
   sendSuccess(res, {
-    user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
+    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
   });
 });
 
@@ -159,7 +159,7 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
   if (name) user.name = name;
   if (email) user.email = email.toLowerCase();
   await user.save();
-  sendSuccess(res, { user: { id: user._id, email: user.email, name: user.name, credits: user.credits, role: user.role } });
+  sendSuccess(res, { user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role } });
 });
 
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {

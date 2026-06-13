@@ -222,7 +222,7 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
   const percentage = activeUserPackage ? (activeUserPackage.creditsUsed / activeUserPackage.credits) * 100 : 0;
 
   sendSuccess(res, {
-    user: { id: user._id, name: user.name, email: user.email, credits: user.credits, role: user.role },
+    user: { id: user._id, name: user.name, email: user.email, balance: user.balance, role: user.role },
     dailyUsage: {
       used: activeUserPackage ? activeUserPackage.creditsUsed : 0,
       total: activeUserPackage ? activeUserPackage.credits : 0,

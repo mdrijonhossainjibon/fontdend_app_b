@@ -60,13 +60,12 @@ export const getById = asyncHandler(async (req: Request, res: Response) => {
 
 export const update = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
-  const { name, email, role, status, credits, balance, password, twoFactorEnabled } = req.body;
+  const { name, email, role, status, balance, password, twoFactorEnabled } = req.body;
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) updateData.email = email.toLowerCase();
   if (role !== undefined) updateData.role = role;
   if (status !== undefined) updateData.status = status;
-  if (credits !== undefined) updateData.credits = credits;
   if (balance !== undefined) updateData.balance = balance;
   if (password !== undefined && password) updateData.password = await bcrypt.hash(password, 12);
   if (twoFactorEnabled !== undefined) updateData.twoFactorEnabled = twoFactorEnabled;
