@@ -4,9 +4,6 @@ import { authMiddleware } from '@/middlewares/auth.middleware';
 
 const router = Router();
 
-// Address
-router.get('/address', authMiddleware, cryptoCtrl.getAddress);
-
 // Config
 router.get('/config', authMiddleware, cryptoCtrl.getConfig);
 router.post('/config', authMiddleware, cryptoCtrl.createOrUpdateConfig);

@@ -6,7 +6,10 @@ import { connectDB } from '@/config';
 import { Deposit } from '@/models/Deposit';
 import { Transaction } from '@/models/Transaction';
 import { User } from '@/models/User';
+import { SystemSetting } from '@/models/SystemSetting';
+import { UserPackage } from '@/models';
 import { fetchPrices } from '@/services/coin-gecko';
+import { checkPaymentStatus, isPaid, isFailed } from '@/services/cryptomus';
 
 // Map common crypto names to ticker keys for CoinGecko lookup
 const NAME_TO_TICKER: Record<string, string> = {
@@ -280,4 +283,118 @@ export const clearDeposits = asyncHandler(async (req: Request, res: Response) =>
   }
 
   sendSuccess(res, { message: 'Orders cleared successfully', deleted: { deposits: depositResult.deletedCount, transactions: txResult.deletedCount } });
+});
+
+/** DELETE /admin/deposits/:id — delete a single deposit */
+export const removeDeposit = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const deposit = await Deposit.findByIdAndDelete(req.params.id);
+  if (!deposit) throw new ApiError(404, 'Deposit not found');
+
+  // Also delete linked transaction
+  if (deposit.notes) {
+    await Transaction.deleteMany({ type: 'deposit', meta: deposit.notes });
+  }
+
+  sendSuccess(res, { message: 'Order deleted successfully' });
+});
+
+/** POST /admin/deposits/:id/check-payment — check Cryptomus payment status & auto-update if paid */
+export const checkPayment = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const deposit = await Deposit.findById(req.params.id);
+  if (!deposit) throw new ApiError(404, 'Deposit not found');
+
+  const invoiceId = deposit.notes;
+  if (!invoiceId) {
+    throw new ApiError(400, 'No Cryptomus invoice ID found for this deposit');
+  }
+
+  const settings = await SystemSetting.findOne();
+  const merchantId = settings?.cryptomusMerchantId?.trim();
+  const apiKey = settings?.cryptomusApiKey?.trim();
+  const creditsPerDollar = settings?.cryptomusCreditsPerDollar || 1000;
+
+  if (!merchantId || !apiKey) {
+    throw new ApiError(500, 'Cryptomus not configured');
+  }
+
+  const payment = await checkPaymentStatus(invoiceId, merchantId, apiKey);
+
+  if (isPaid(payment.status)) {
+    // Check if already processed (has Transaction)
+    const existing = await Transaction.findOne({
+      userId: deposit.userId,
+      type: 'deposit',
+      meta: invoiceId,
+    });
+
+    if (!existing) {
+      const credits = Math.round(parseFloat(payment.amount) * creditsPerDollar);
+
+      // Add balance to user
+      await User.findByIdAndUpdate(deposit.userId, {
+        $inc: { balance: parseFloat(payment.amount) }
+      });
+
+      // Add credits to active package
+      const activePkg = await UserPackage.findOne({
+        userId: deposit.userId,
+        status: 'active',
+        endDate: { $gt: new Date() },
+      });
+      if (activePkg) {
+        activePkg.credits += credits;
+        await activePkg.save();
+      }
+
+      // Create transaction record
+      const userData = await User.findById(deposit.userId).select('balance');
+      await Transaction.create({
+        userId: deposit.userId,
+        type: 'deposit',
+        credits,
+        amount: parseFloat(payment.amount),
+        balanceBefore: (userData?.balance || 0) - parseFloat(payment.amount),
+        balanceAfter: userData?.balance || 0,
+        currency: payment.payerCurrency || 'USDT',
+        description: `${payment.payerCurrency || 'Crypto'} deposit via Cryptomus`,
+        referenceType: 'deposit',
+        referenceId: invoiceId,
+        label: `${payment.payerCurrency || 'Crypto'}${payment.network ? ` (${payment.network})` : ''} Top-up`,
+        meta: invoiceId,
+      });
+    }
+
+    // Update deposit status
+    deposit.status = 'completed';
+    await deposit.save();
+
+    sendSuccess(res, {
+      message: 'Payment confirmed and balance updated',
+      status: 'completed',
+      deposit: mapDeposit(deposit),
+    });
+    return;
+  }
+
+  if (isFailed(payment.status)) {
+    const newStatus = payment.status === 'expired' ? 'expired' : 'failed';
+    deposit.status = newStatus;
+    await deposit.save();
+
+    sendSuccess(res, {
+      message: `Payment status updated to ${newStatus}`,
+      status: newStatus,
+      deposit: mapDeposit(deposit),
+    });
+    return;
+  }
+
+  // Still pending/confirming
+  sendSuccess(res, {
+    message: `Payment still ${payment.status}`,
+    status: payment.status,
+    deposit: mapDeposit(deposit),
+  });
 });

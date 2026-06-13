@@ -43,7 +43,6 @@ export function createApp(): Express {
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
       '/api/auth/reset-password/verify',
-      '/api/cryptomus/webhook',
     ];
     if (skipPaths.some(p => req.path.startsWith(p))) return next();
     (fingerprintAuth('signature', env.AUTH_FINGERPRINT_SECRET) as any)(req, res, next);

@@ -4,6 +4,9 @@ import { IApiKey } from './apiKey.types'
 export const ApiKeySchema = new Schema<IApiKey>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    resellerId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    packageIds: [{ type: Schema.Types.ObjectId, ref: 'Package' }],
+    customerEmail: { type: String, trim: true },
     name: { type: String, required: true, trim: true },
     key: { type: String, required: true, unique: true },
     prefix: { type: String, required: true },
@@ -14,6 +17,7 @@ export const ApiKeySchema = new Schema<IApiKey>(
     lastUsedAt: { type: Date },
     expiresAt: { type: Date },
     isActive: { type: Boolean, default: true },
+    allowedIps: [{ type: String }],
   },
   { timestamps: true }
 )

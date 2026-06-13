@@ -13,10 +13,10 @@ export const PricingPlanSchema = new Schema<IPricingPlan>(
     count: { type: Number, min: 0 },
     dailyLimit: { type: Number, min: 0 },
     rateLimit: { type: Number, min: 0 },
-    isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     sortOrder: { type: Number, default: 0 },
   },
   { timestamps: true }
 )
 PricingPlanSchema.index({ code: 1 })
-PricingPlanSchema.index({ isActive: 1, sortOrder: 1 })
+PricingPlanSchema.index({ status: 1, sortOrder: 1 })

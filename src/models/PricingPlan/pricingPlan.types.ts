@@ -11,7 +11,7 @@ export interface IPricingPlan extends Document {
   count?: number
   dailyLimit?: number
   rateLimit?: number
-  isActive: boolean
+  status: 'active' | 'inactive'
   sortOrder: number
   createdAt: Date
   updatedAt: Date

@@ -3,7 +3,6 @@ import asyncHandler from '@/utils/asyncHandler';
 import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { CryptoConfig } from '@/models/CryptoConfig';
-import { DepositAddress } from '@/models/DepositAddress';
 import { Deposit } from '@/models/Deposit';
 import { User } from '@/models/User';
 
@@ -84,46 +83,6 @@ export const createDeposit = asyncHandler(async (req: Request, res: Response) =>
   await User.findByIdAndUpdate((req as any).user._id, { $inc: { credits: amountUSD || 0 } });
 
   sendSuccess(res, { message: 'Deposit recorded and credits updated', data: deposit }, 201);
-});
-
-export const getAddress = asyncHandler(async (req: Request, res: Response) => {
-  const cryptoId = req.query.cryptoId as string;
-  const networkId = req.query.networkId as string;
-
-  if (!cryptoId || !networkId) throw new ApiError(400, 'cryptoId and networkId are required');
-
-  const cryptoConfig = await CryptoConfig.findOne({ id: cryptoId, status: 'active' });
-  if (!cryptoConfig) throw new ApiError(400, 'Invalid cryptocurrency');
-
-  const network = cryptoConfig.networks.find((n: any) => n.id === networkId && n.status === 'active');
-  if (!network) throw new ApiError(400, 'Invalid network');
-
-  let depositAddr = await DepositAddress.findOne({ userId: (req as any).user._id, cryptoId, networkId });
-
-  if (!depositAddr) {
-    const existingAny = await DepositAddress.findOne({ userId: (req as any).user._id });
-    if (existingAny) {
-      depositAddr = await DepositAddress.create({
-        userId: (req as any).user._id, cryptoId, networkId,
-        address: existingAny.address, privateKey: existingAny.privateKey, status: 'active',
-      });
-    } else {
-      const { Wallet } = require('ethers');
-      const wallet = Wallet.createRandom();
-      depositAddr = await DepositAddress.create({
-        userId: (req as any).user._id, cryptoId, networkId,
-        address: wallet.address, privateKey: wallet.privateKey, status: 'active',
-      });
-    }
-  }
-
-  sendSuccess(res, {
-    data: {
-      address: depositAddr.address, cryptoId, cryptoName: cryptoConfig.name,
-      networkId, networkName: network.name, minDeposit: network.minDeposit,
-      fee: network.fee, confirmations: network.confirmations,
-    },
-  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

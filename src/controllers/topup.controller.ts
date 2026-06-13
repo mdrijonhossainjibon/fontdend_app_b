@@ -9,7 +9,7 @@ import { Deposit } from '@/models/Deposit';
 import { PromoCode } from '@/models/PromoCode';
 import { SystemSetting } from '@/models/SystemSetting';
 import { PricingPlan } from '@/models/PricingPlan';
-import { createInvoice as cryptomusCreateInvoice } from '@/services/cryptomus';
+import { createInvoice as cryptomusCreateInvoice, checkPaymentStatus, isPaid, isFailed } from '@/services/cryptomus';
 
 // GET /topup/active-package
 export const getActiveUserPackage = asyncHandler(async (req: Request, res: Response) => {
@@ -471,6 +471,140 @@ export const createCryptomusInvoice = asyncHandler(async (req: Request, res: Res
       walletAddress: invoice.address,
       network: invoice.network,
       paymentAmount: amount,
+    },
+  });
+});
+
+// POST /topup/check-payment
+export const checkTopupPayment = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user._id;
+
+  const deposit = await Deposit.findOne({
+    userId,
+    status: { $in: ['pending', 'confirming', 'checking'] },
+    $or: [
+      { expiresAt: { $exists: false } },
+      { expiresAt: { $gt: new Date() } },
+    ],
+  });
+
+  if (!deposit) {
+    return sendSuccess(res, { status: 'no_pending_deposit', deposit: null });
+  }
+
+  const invoiceId = deposit.notes;
+  if (!invoiceId) {
+    // No Cryptomus invoice — just return current status
+    return sendSuccess(res, { status: deposit.status, deposit });
+  }
+
+  const settings = await SystemSetting.findOne();
+  const merchantId = settings?.cryptomusMerchantId?.trim();
+  const apiKey = settings?.cryptomusApiKey?.trim();
+  const creditsPerDollar = settings?.cryptomusCreditsPerDollar || 1000;
+
+  if (!merchantId || !apiKey) {
+    return sendSuccess(res, { status: deposit.status, deposit });
+  }
+
+  const payment = await checkPaymentStatus(invoiceId, merchantId, apiKey);
+
+  if (isPaid(payment.status)) {
+    const existing = await Transaction.findOne({
+      userId: deposit.userId,
+      type: 'deposit',
+      meta: invoiceId,
+    });
+
+    if (!existing) {
+      const credits = Math.round(parseFloat(payment.amount) * creditsPerDollar);
+
+      await User.findByIdAndUpdate(deposit.userId, {
+        $inc: { balance: parseFloat(payment.amount) }
+      });
+
+      const activePkg = await UserPackage.findOne({
+        userId: deposit.userId,
+        status: 'active',
+        endDate: { $gt: new Date() },
+      });
+      if (activePkg) {
+        activePkg.credits += credits;
+        await activePkg.save();
+      }
+
+      const userData = await User.findById(deposit.userId).select('balance');
+      await Transaction.create({
+        userId: deposit.userId,
+        type: 'deposit',
+        credits,
+        amount: parseFloat(payment.amount),
+        balanceBefore: (userData?.balance || 0) - parseFloat(payment.amount),
+        balanceAfter: userData?.balance || 0,
+        currency: payment.payerCurrency || 'USDT',
+        description: `${payment.payerCurrency || 'Crypto'} deposit via Cryptomus`,
+        referenceType: 'deposit',
+        referenceId: invoiceId,
+        label: `${payment.payerCurrency || 'Crypto'}${payment.network ? ` (${payment.network})` : ''} Top-up`,
+        meta: invoiceId,
+      });
+    }
+
+    deposit.status = 'completed';
+    await deposit.save();
+
+    return sendSuccess(res, {
+      status: 'completed',
+      message: 'Payment confirmed!',
+      deposit: {
+        _id: deposit._id,
+        amountUSD: deposit.amountUSD,
+        cryptoName: deposit.cryptoName,
+        networkName: deposit.networkName,
+        address: deposit.address,
+        status: 'completed',
+        notes: deposit.notes,
+        createdAt: deposit.createdAt,
+        expiresAt: deposit.expiresAt,
+      },
+    });
+  }
+
+  if (isFailed(payment.status)) {
+    const newStatus = payment.status === 'expired' ? 'expired' : 'failed';
+    deposit.status = newStatus;
+    await deposit.save();
+
+    return sendSuccess(res, {
+      status: newStatus,
+      message: `Payment ${newStatus}`,
+      deposit: {
+        _id: deposit._id,
+        amountUSD: deposit.amountUSD,
+        cryptoName: deposit.cryptoName,
+        networkName: deposit.networkName,
+        address: deposit.address,
+        status: newStatus,
+        notes: deposit.notes,
+        createdAt: deposit.createdAt,
+        expiresAt: deposit.expiresAt,
+      },
+    });
+  }
+
+  return sendSuccess(res, {
+    status: deposit.status,
+    message: `Payment still ${payment.status}`,
+    deposit: {
+      _id: deposit._id,
+      amountUSD: deposit.amountUSD,
+      cryptoName: deposit.cryptoName,
+      networkName: deposit.networkName,
+      address: deposit.address,
+      status: deposit.status,
+      notes: deposit.notes,
+      createdAt: deposit.createdAt,
+      expiresAt: deposit.expiresAt,
     },
   });
 });

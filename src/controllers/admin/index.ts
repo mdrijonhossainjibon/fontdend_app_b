@@ -1,7 +1,7 @@
 export { getDashboardStats, getRevenueStats, getUserAnalytics, getAnalytics } from './analytics.controller';
 export { list as listUsers, getById as getUserById, update as updateUser, remove as removeUser, toggleActive as toggleUserActive, getUserApiKeys, createUserApiKey, deleteUserApiKey, regenerateUserApiKey } from './users.controller';
 export { list as listWallets, create as createWallet, update as updateWallet, remove as removeWallet } from './admin-wallets.controller';
-export { list as listDeposits, approve as approveDeposit, reject as rejectDeposit, clearDeposits } from './deposits.controller';
+export { list as listDeposits, approve as approveDeposit, reject as rejectDeposit, checkPayment as checkDepositPayment, clearDeposits, removeDeposit } from './deposits.controller';
 export { list as listExtensions, create as createExtension, update as updateExtension, remove as removeExtension, scan as scanExtension } from './extensions.controller';
 export { list as listPricingPlans, create as createPricingPlan, update as updatePricingPlan, remove as removePricingPlan } from './pricing-plans.controller';
 export { list as listCreditPackages, create as createCreditPackage, update as updateCreditPackage, remove as removeCreditPackage } from './credit-packages.controller';

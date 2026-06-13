@@ -39,7 +39,6 @@ export async function createInvoice(params: CreateInvoiceParams): Promise<Create
         amount: amount.toFixed(2),
         currency,
         order_id: orderId,
-        url_callback: `${process.env.SERVER_URL || ''}/api/cryptomus/webhook`,
     };
 
     // Pass to_currency + network to get wallet address immediately
@@ -154,11 +153,4 @@ export function isPaid(status: string): boolean {
 /** Payment is considered failed/cancelled */
 export function isFailed(status: string): boolean {
     return status === 'cancel' || status === 'fail' || status === 'expired';
-}
-
-/** Verify Cryptomus webhook signature */
-export function verifyWebhookSign(body: string, sign: string, apiKey: string): boolean {
-    const base64 = Buffer.from(body).toString('base64');
-    const expected = crypto.createHash('md5').update(base64 + apiKey).digest('hex');
-    return expected === sign;
 }

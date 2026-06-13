@@ -4,9 +4,7 @@ import { ApiError } from '@/utils/ApiError';
 import { sendSuccess } from '@/utils/response';
 import { connectDB } from '@/config';
 import { CryptoConfig } from '@/models/CryptoConfig';
-import { DepositAddress } from '@/models/DepositAddress';
 import { Deposit } from '@/models/Deposit';
-import { User } from '@/models/User';
 
 export const getConfigs = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();

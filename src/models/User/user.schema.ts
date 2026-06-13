@@ -29,7 +29,7 @@ export const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['user', 'solver', 'admin', 'superadmin'],
+      enum: ['user', 'solver', 'reseller', 'admin', 'superadmin'],
       default: 'user',
       index: true,
     },

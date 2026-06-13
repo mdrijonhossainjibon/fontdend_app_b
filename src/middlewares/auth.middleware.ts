@@ -54,3 +54,11 @@ export const adminMiddleware = (req: AuthRequest, _res: Response, next: NextFunc
   if (req.user.role !== "admin") return next(ApiError.forbidden("Admin access required"));
   next();
 };
+
+export const resellerMiddleware = (req: AuthRequest, _res: Response, next: NextFunction): void => {
+  if (!req.user) return next(ApiError.unauthorized("Authentication required"));
+  if (!['reseller', 'admin', 'superadmin'].includes(req.user.role)) {
+    return next(ApiError.forbidden("Reseller/Admin access required"));
+  }
+  next();
+};

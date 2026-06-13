@@ -7,7 +7,7 @@ import { UserPackage } from '@/models/UserPackage';
 import { Transaction } from '@/models/Transaction';
 import { Deposit } from '@/models/Deposit';
 import { SystemSetting } from '@/models/SystemSetting';
-import { checkPaymentStatus, isPaid, isFailed, verifyWebhookSign } from '@/services/cryptomus';
+import { checkPaymentStatus, isPaid, isFailed } from '@/services/cryptomus';
 
 /** Check payment status — called by frontend polling */
 export const checkCryptomusPayment = asyncHandler(async (req: Request, res: Response) => {
@@ -154,110 +154,3 @@ export const getPaymentByOrderId = asyncHandler(async (req: Request, res: Respon
   });
 });
 
-/** Cryptomus webhook — called by Cryptomus when payment status changes */
-export const cryptomusWebhook = asyncHandler(async (req: Request, res: Response) => {
-  const rawBody = (req as any).rawBody;
-  const sign = req.headers['sign'] as string;
-
-  if (!rawBody || !sign) {
-    console.warn('[cryptomus-webhook] Missing body or sign header');
-    return res.status(400).json({ error: 'Missing body or sign header' });
-  }
-
-  // Get credentials
-  const settings = await SystemSetting.findOne();
-  const apiKey = settings?.cryptomusApiKey?.trim();
-
-  if (!apiKey) {
-    console.warn('[cryptomus-webhook] Cryptomus not configured');
-    return res.status(500).json({ error: 'Cryptomus not configured' });
-  }
-
-  // Verify signature
-  if (!verifyWebhookSign(rawBody, sign, apiKey)) {
-    console.warn('[cryptomus-webhook] Invalid signature');
-    return res.status(403).json({ error: 'Invalid signature' });
-  }
-
-  const data = JSON.parse(rawBody);
-  const payment = data?.result || data;
-
-  if (!payment?.uuid) {
-    console.warn('[cryptomus-webhook] Missing payment UUID', payment);
-    return res.status(400).json({ error: 'Missing payment UUID' });
-  }
-
-  console.log(`[cryptomus-webhook] Received: invoiceId=${payment.uuid} status=${payment.status} amount=${payment.amount}`);
-
-  if (isPaid(payment.status)) {
-    // Check if already processed
-    const existing = await Transaction.findOne({
-      type: 'deposit',
-      meta: payment.uuid,
-    });
-
-    if (!existing) {
-      const creditsPerDollar = settings?.cryptomusCreditsPerDollar || 1000;
-      const credits = Math.round(parseFloat(payment.amount) * creditsPerDollar);
-
-      // Find user from deposit record
-      const deposit = await Deposit.findOne({ notes: payment.uuid });
-      if (!deposit) {
-        console.warn(`[cryptomus-webhook] No deposit found for invoice ${payment.uuid}`);
-        return res.status(200).json({ ok: true }); // Ack but don't process
-      }
-
-      const userId = deposit.userId;
-      const userData = await User.findById(userId).select('balance');
-      const balanceBefore = userData?.balance || 0;
-      const balanceAfter = balanceBefore + parseFloat(payment.amount);
-
-      // Add balance to user account
-      await User.findByIdAndUpdate(userId, { $inc: { balance: parseFloat(payment.amount) } });
-
-      // Add credits to user's active package
-      const activePkg = await UserPackage.findOne({
-        userId,
-        status: 'active',
-        endDate: { $gt: new Date() },
-      });
-      if (activePkg) {
-        activePkg.credits += credits;
-        await activePkg.save();
-      }
-
-      // Create transaction record
-      await Transaction.create({
-        userId,
-        type: 'deposit',
-        credits,
-        amount: parseFloat(payment.amount),
-        balanceBefore,
-        balanceAfter,
-        currency: payment.payer_currency || 'USDT',
-        description: `${payment.payer_currency || 'Crypto'} deposit via Cryptomus`,
-        referenceType: 'deposit',
-        referenceId: payment.uuid,
-        label: `${payment.payer_currency || 'Crypto'}${payment.network ? ` (${payment.network})` : ''} Top-up`,
-        meta: payment.uuid,
-      });
-    }
-
-    // Update Deposit record status
-    await Deposit.findOneAndUpdate(
-      { notes: payment.uuid },
-      { $set: { status: 'completed' } },
-    );
-  }
-
-  if (isFailed(payment.status)) {
-    const newStatus = payment.status === 'expired' ? 'expired' : 'failed';
-    await Deposit.findOneAndUpdate(
-      { notes: payment.uuid },
-      { $set: { status: newStatus } },
-    );
-  }
-
-  res.status(200).json({ ok: true });
-  return;
-});
