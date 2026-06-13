@@ -321,7 +321,14 @@ export const checkPayment = asyncHandler(async (req: Request, res: Response) => 
 
   const payment = await checkPaymentStatus(invoiceId, merchantId, apiKey);
 
+  // Build update fields
+  const updateFields: Record<string, any> = {};
+  if (payment.txid) updateFields.txHash = payment.txid;
+
   if (isPaid(payment.status)) {
+    updateFields.status = 'completed';
+    if (payment.txid) updateFields.txHash = payment.txid;
+
     // Check if already processed (has Transaction)
     const existing = await Transaction.findOne({
       userId: deposit.userId,
@@ -367,34 +374,92 @@ export const checkPayment = asyncHandler(async (req: Request, res: Response) => 
     }
 
     // Update deposit status
-    deposit.status = 'completed';
-    await deposit.save();
+    await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
 
     sendSuccess(res, {
       message: 'Payment confirmed and balance updated',
       status: 'completed',
-      deposit: mapDeposit(deposit),
+      deposit: mapDeposit({ ...deposit.toObject?.() || deposit, ...updateFields }),
+      paymentInfo: {
+        uuid: payment.uuid,
+        status: payment.status,
+        amount: payment.amount,
+        payerAmount: payment.payerAmount,
+        payerCurrency: payment.payerCurrency,
+        currency: payment.currency,
+        network: payment.network,
+        txid: payment.txid,
+        isFinal: payment.isFinal,
+      },
+    });
+    return;
+  }
+
+  // confirm_check → marking as confirming, save txHash
+  if (payment.status === 'confirm_check') {
+    updateFields.status = 'confirming';
+    await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
+
+    sendSuccess(res, {
+      message: 'Payment confirmed by Cryptomus, awaiting blockchain confirmations',
+      status: 'confirming',
+      deposit: mapDeposit({ ...deposit.toObject?.() || deposit, ...updateFields }),
+      paymentInfo: {
+        uuid: payment.uuid,
+        status: payment.status,
+        amount: payment.amount,
+        payerAmount: payment.payerAmount,
+        payerCurrency: payment.payerCurrency,
+        currency: payment.currency,
+        network: payment.network,
+        txid: payment.txid,
+        isFinal: payment.isFinal,
+      },
     });
     return;
   }
 
   if (isFailed(payment.status)) {
     const newStatus = payment.status === 'expired' ? 'expired' : 'failed';
-    deposit.status = newStatus;
-    await deposit.save();
+    updateFields.status = newStatus;
+    await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
 
     sendSuccess(res, {
       message: `Payment status updated to ${newStatus}`,
       status: newStatus,
-      deposit: mapDeposit(deposit),
+      deposit: mapDeposit({ ...deposit.toObject?.() || deposit, ...updateFields }),
+      paymentInfo: {
+        uuid: payment.uuid,
+        status: payment.status,
+        amount: payment.amount,
+        payerAmount: payment.payerAmount,
+        payerCurrency: payment.payerCurrency,
+        currency: payment.currency,
+        network: payment.network,
+        txid: payment.txid,
+        isFinal: payment.isFinal,
+      },
     });
     return;
   }
 
-  // Still pending/confirming
+  // Still pending/confirming (not paid, not failed, not confirm_check)
+  await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
+
   sendSuccess(res, {
     message: `Payment still ${payment.status}`,
     status: payment.status,
-    deposit: mapDeposit(deposit),
+    deposit: mapDeposit({ ...deposit.toObject?.() || deposit, ...updateFields }),
+    paymentInfo: {
+      uuid: payment.uuid,
+      status: payment.status,
+      amount: payment.amount,
+      payerAmount: payment.payerAmount,
+      payerCurrency: payment.payerCurrency,
+      currency: payment.currency,
+      network: payment.network,
+      txid: payment.txid,
+      isFinal: payment.isFinal,
+    },
   });
 });

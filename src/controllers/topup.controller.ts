@@ -439,6 +439,7 @@ export const createCryptomusInvoice = asyncHandler(async (req: Request, res: Res
         walletAddress: invoice.address,
         network: invoice.network || network,
         paymentAmount: amount,
+        currency,
       },
     });
   }
@@ -471,6 +472,7 @@ export const createCryptomusInvoice = asyncHandler(async (req: Request, res: Res
       walletAddress: invoice.address,
       network: invoice.network,
       paymentAmount: amount,
+      currency: currency || null,
     },
   });
 });
@@ -509,7 +511,14 @@ export const checkTopupPayment = asyncHandler(async (req: Request, res: Response
 
   const payment = await checkPaymentStatus(invoiceId, merchantId, apiKey);
 
+  // Build update fields for direct DB write (bypass Mongoose change tracking)
+  const updateFields: Record<string, any> = {};
+  if (payment.txid) updateFields.txHash = payment.txid;
+
   if (isPaid(payment.status)) {
+    updateFields.status = 'completed';
+    if (payment.txid) updateFields.txHash = payment.txid;
+
     const existing = await Transaction.findOne({
       userId: deposit.userId,
       type: 'deposit',
@@ -550,8 +559,7 @@ export const checkTopupPayment = asyncHandler(async (req: Request, res: Response
       });
     }
 
-    deposit.status = 'completed';
-    await deposit.save();
+    await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
 
     return sendSuccess(res, {
       status: 'completed',
@@ -563,6 +571,30 @@ export const checkTopupPayment = asyncHandler(async (req: Request, res: Response
         networkName: deposit.networkName,
         address: deposit.address,
         status: 'completed',
+        txHash: deposit.txHash,
+        notes: deposit.notes,
+        createdAt: deposit.createdAt,
+        expiresAt: deposit.expiresAt,
+      },
+    });
+  }
+
+  // confirm_check → confirming, save txHash
+  if (payment.status === 'confirm_check') {
+    updateFields.status = 'confirming';
+    await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
+
+    return sendSuccess(res, {
+      status: 'confirming',
+      message: 'Payment confirmed by Cryptomus, awaiting blockchain confirmations',
+      deposit: {
+        _id: deposit._id,
+        amountUSD: deposit.amountUSD,
+        cryptoName: deposit.cryptoName,
+        networkName: deposit.networkName,
+        address: deposit.address,
+        status: 'confirming',
+        txHash: updateFields.txHash || deposit.txHash,
         notes: deposit.notes,
         createdAt: deposit.createdAt,
         expiresAt: deposit.expiresAt,
@@ -572,8 +604,8 @@ export const checkTopupPayment = asyncHandler(async (req: Request, res: Response
 
   if (isFailed(payment.status)) {
     const newStatus = payment.status === 'expired' ? 'expired' : 'failed';
-    deposit.status = newStatus;
-    await deposit.save();
+    updateFields.status = newStatus;
+    await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
 
     return sendSuccess(res, {
       status: newStatus,
@@ -585,12 +617,15 @@ export const checkTopupPayment = asyncHandler(async (req: Request, res: Response
         networkName: deposit.networkName,
         address: deposit.address,
         status: newStatus,
+        txHash: updateFields.txHash || deposit.txHash,
         notes: deposit.notes,
         createdAt: deposit.createdAt,
         expiresAt: deposit.expiresAt,
       },
     });
   }
+
+  await Deposit.updateOne({ _id: deposit._id }, { $set: updateFields });
 
   return sendSuccess(res, {
     status: deposit.status,
@@ -602,6 +637,7 @@ export const checkTopupPayment = asyncHandler(async (req: Request, res: Response
       networkName: deposit.networkName,
       address: deposit.address,
       status: deposit.status,
+      txHash: updateFields.txHash || deposit.txHash,
       notes: deposit.notes,
       createdAt: deposit.createdAt,
       expiresAt: deposit.expiresAt,
