@@ -4,7 +4,7 @@
   "description": "Backend service for CaptchaⱮaster - AI-powered captcha solving",
   "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/server.js",
+   
     "dev": "nodemon --exec \"ts-node --transpile-only -r tsconfig-paths/register src/server.ts\"",
     "build": "tsc && tsc-alias",
     "test": "jest",
@@ -14,16 +14,16 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist logs/*",
-    "logs": "tail -f logs/combined.log",
+    "slogs": "tail -f logs/combined.log",
     "docker:build": "docker build -t captchamaster-api .",
     "docker:run": "docker run -p 3001:3001 captchamaster-api",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "pm2:start": "pm2 start ecosystem.config.js",
-    "pm2:stop": "pm2 stop captchamaster-api",
-    "pm2:restart": "pm2 restart captchamaster-api",
-    "pm2:logs": "pm2 logs captchamaster-api",
-    "pm2:status": "pm2 status"
+    "start": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop captchamaster-api",
+    "restart": "pm2 restart captchamaster-api",
+    "logs": "pm2 logs captchamaster-api",
+    "status": "pm2 status"
   },
   "keywords": [
     "captcha",
