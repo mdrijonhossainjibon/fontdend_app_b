@@ -51,7 +51,7 @@ export const optionalAuthMiddleware = async (req: AuthRequest, _res: Response, n
 
 export const adminMiddleware = (req: AuthRequest, _res: Response, next: NextFunction): void => {
   if (!req.user) return next(ApiError.unauthorized("Authentication required"));
-  if (req.user.role !== "admin") return next(ApiError.forbidden("Admin access required"));
+  if (!['admin', 'superadmin'].includes(req.user.role)) return next(ApiError.forbidden("Admin access required"));
   next();
 };
 

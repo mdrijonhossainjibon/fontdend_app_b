@@ -79,7 +79,7 @@ export function initializeSocket(httpServer: HttpServer): SocketServer {
       socket.join(`user:${userId}`);
 
       // Auto-join admin room for admin users
-      if (role === 'admin') {
+      if (['admin', 'superadmin'].includes(role)) {
         socket.join('admin');
         startAnalyticsInterval();
       }

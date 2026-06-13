@@ -10,6 +10,8 @@ import {
   regenerateApiKey,
   purchasePackage,
   getPricingPlans,
+  claimCoupon,
+  validateCoupon,
 } from '@/controllers/reseller.controller';
 
 const router = Router();
@@ -20,6 +22,8 @@ router.get('/stats', getDashboardStats);
 router.get('/packages', getPackages);
 router.delete('/packages/:id', deletePackage);
 router.get('/pricing-plans', getPricingPlans);
+router.get('/coupon/claim', claimCoupon);
+router.post('/validate-coupon', validateCoupon);
 router.post('/purchase/:planId', purchasePackage);
 router.get('/api-keys', getApiKeys);
 router.post('/api-keys', createApiKey);

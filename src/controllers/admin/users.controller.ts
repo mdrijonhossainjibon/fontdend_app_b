@@ -23,10 +23,22 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
   const status = req.query.status as string;
 
   const query: Record<string, unknown> = {};
+
+  // Admin (not superadmin) can only see 'user' and 'admin' roles
+  const requesterRole = (req as any).user?.role;
+  if (requesterRole === 'admin') {
+    if (role && ['user', 'admin'].includes(role)) {
+      query.role = role;
+    } else {
+      query.role = { $in: ['user', 'admin'] };
+    }
+  } else if (role) {
+    query.role = role;
+  }
+
   if (search) {
     query.$or = [{ name: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }];
   }
-  if (role) query.role = role;
   if (status === 'active') query.status = 'active';
   else if (status === 'inactive') query.status = 'inactive';
 
@@ -64,7 +76,13 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) updateData.email = email.toLowerCase();
-  if (role !== undefined) updateData.role = role;
+  if (role !== undefined) {
+    const requesterRole = (req as any).user?.role;
+    if (requesterRole === 'admin' && !['user', 'admin'].includes(role)) {
+      throw new ApiError(403, 'Admins can only assign user or admin roles');
+    }
+    updateData.role = role;
+  }
   if (status !== undefined) updateData.status = status;
   if (balance !== undefined) updateData.balance = balance;
   if (password !== undefined && password) updateData.password = await bcrypt.hash(password, 12);

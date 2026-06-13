@@ -8,6 +8,7 @@ import { User } from '@/models/User';
 import { PricingPlan } from '@/models/PricingPlan';
 import { ResellerCustomer } from '@/models/ResellerCustomer';
 import { ResellerApiKey } from '@/models/ResellerApiKey';
+import { PromoCode } from '@/models/PromoCode';
 
 const generateApiKeyValue = (): string => {
   return 'rk_live_' + crypto.randomBytes(32).toString('hex');
@@ -76,9 +77,29 @@ export const createApiKey = asyncHandler(async (req: Request, res: Response) => 
 
   if (!name || !name.trim()) throw new ApiError(400, 'Name is required');
 
+  // Check minimum balance of $5
+  const user = await User.findById(userId).select('balance');
+  if (!user) throw new ApiError(404, 'User not found');
+  if (user.balance < 5) {
+    throw new ApiError(400, 'Minimum $5 deposit required to create API keys. Please top up your wallet first.');
+  }
+
   const apiKey = await ResellerApiKey.create({
     resellerId: userId,
     name: name.trim(),
+  });
+
+  // Auto-generate a $100 advance coupon code for this reseller
+  const couponCode = `ADV${userId.toString().slice(-4).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
+  await PromoCode.create({
+    code: couponCode,
+    type: 'fixed',
+    discount: 100,
+    credits: 100,
+    maxUses: 1,
+    currentUses: 0,
+    isActive: true,
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
   });
 
   sendSuccess(res, {
@@ -90,6 +111,11 @@ export const createApiKey = asyncHandler(async (req: Request, res: Response) => 
       status: apiKey.status,
       usageCount: apiKey.usageCount,
       createdAt: apiKey.createdAt,
+    },
+    coupon: {
+      code: couponCode,
+      amount: 100,
+      message: '$100 advance coupon code generated',
     },
   });
 });
@@ -209,12 +235,82 @@ export const purchasePackage = asyncHandler(async (req: Request, res: Response) 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Claim $100 Advance Coupon (requires balance >= $5)
+// ─────────────────────────────────────────────────────────────────────────────
+export const claimCoupon = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const userId = (req as any).user._id;
+
+  const user = await User.findById(userId).select('balance');
+  if (!user) throw new ApiError(404, 'User not found');
+  if (user.balance < 5) {
+    throw new ApiError(400, 'Minimum $5 balance required to claim coupon');
+  }
+
+  // Check if already claimed a coupon in last 30 days
+  const existing = await PromoCode.findOne({
+    code: { $regex: `^ADV${userId.toString().slice(-4).toUpperCase()}` },
+    isActive: true,
+    expiresAt: { $gt: new Date() },
+  });
+  if (existing) {
+    throw new ApiError(400, 'You already have an active coupon. Use it first before claiming a new one.');
+  }
+
+  const couponCode = `ADV${userId.toString().slice(-4).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
+  await PromoCode.create({
+    code: couponCode,
+    type: 'fixed',
+    discount: 100,
+    credits: 100,
+    maxUses: 1,
+    currentUses: 0,
+    isActive: true,
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  });
+
+  sendSuccess(res, {
+    coupon: { code: couponCode, amount: 100, message: '$100 advance coupon code generated' },
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Get available pricing plans
 // ─────────────────────────────────────────────────────────────────────────────
 export const getPricingPlans = asyncHandler(async (_req: Request, res: Response) => {
   await connectDB();
   const plans = await PricingPlan.find({ status: 'active' }).sort({ sortOrder: 1 }).lean();
   sendSuccess(res, { plans });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Validate Coupon Code
+// ─────────────────────────────────────────────────────────────────────────────
+export const validateCoupon = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const { code } = req.body;
+  if (!code || !code.trim()) throw new ApiError(400, 'Coupon code is required');
+
+  const promo = await PromoCode.findOne({
+    code: code.trim().toUpperCase(),
+    isActive: true,
+    expiresAt: { $gt: new Date() },
+  }).lean();
+
+  if (!promo) throw new ApiError(400, 'Invalid or expired coupon code');
+
+  if (promo.currentUses >= promo.maxUses) {
+    throw new ApiError(400, 'Coupon code has reached its usage limit');
+  }
+
+  sendSuccess(res, {
+    coupon: {
+      code: promo.code,
+      discount: promo.discount,
+      type: promo.type,
+      credits: promo.credits,
+    },
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

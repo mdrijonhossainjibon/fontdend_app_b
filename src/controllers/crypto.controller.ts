@@ -10,7 +10,7 @@ import { User } from '@/models/User';
 // Config
 // ─────────────────────────────────────────────────────────────────────────────
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
-  const isAdmin = (req as any).user?.role === 'admin';
+  const isAdmin = ['admin', 'superadmin'].includes((req as any).user?.role);
   const query = isAdmin ? {} : { status: 'active' };
   const configs = await CryptoConfig.find(query).select('-__v').lean();
 
@@ -23,7 +23,7 @@ export const getConfig = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const createOrUpdateConfig = asyncHandler(async (req: Request, res: Response) => {
-  if ((req as any).user?.role !== 'admin') throw new ApiError(401, 'Unauthorized');
+  if (!['admin', 'superadmin'].includes((req as any).user?.role)) throw new ApiError(401, 'Unauthorized');
   const { id, name, fullName, icon, networks, status } = req.body;
   if (!id || !name || !fullName || !networks?.length) throw new ApiError(400, 'Missing required fields');
 
@@ -39,7 +39,7 @@ export const createOrUpdateConfig = asyncHandler(async (req: Request, res: Respo
 });
 
 export const deleteConfig = asyncHandler(async (req: Request, res: Response) => {
-  if ((req as any).user?.role !== 'admin') throw new ApiError(401, 'Unauthorized');
+  if (!['admin', 'superadmin'].includes((req as any).user?.role)) throw new ApiError(401, 'Unauthorized');
   const id = req.query.id as string;
   if (!id) throw new ApiError(400, 'ID is required');
 
