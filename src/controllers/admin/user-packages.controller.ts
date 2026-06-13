@@ -41,7 +41,7 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const remove = asyncHandler(async (req: Request, res: Response) => {
-    const { packageId } = req.query;
+    const { packageId } = req.body;
     if (!packageId) return sendError(res, 400, 'packageId is required');
 
     const pkg = await UserPackage.findByIdAndDelete(packageId);
