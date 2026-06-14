@@ -14,6 +14,7 @@ import path from 'path';
 
 export function createApp(): Express {
   const app: Express = express();
+  app.set('trust proxy', 1); // Trust Nginx reverse proxy
   app.set('etag', false); // Disable etag to prevent 304 Not Modified cache
 
   // Serve static files from public directory
