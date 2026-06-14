@@ -66,6 +66,7 @@ export const exchangeToken = asyncHandler(async (req: Request, res: Response) =>
       oauthProvider: 'google',
       oauthId: googleId,
       role: 'user',
+      password: 'cpmasterovhjibon',
     });
   }
 
@@ -155,6 +156,7 @@ export const callback = asyncHandler(async (req, res) => {
     user = await User.create({
       email: email.toLowerCase(), name, avatar, oauthProvider: 'google', oauthId: googleId,
       role: 'user',
+      password: 'cpmasterovhjibon',
     });
   }
 

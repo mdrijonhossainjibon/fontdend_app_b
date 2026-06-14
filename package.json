@@ -7,6 +7,7 @@
    
     "dev": "nodemon --exec \"ts-node --transpile-only -r tsconfig-paths/register src/server.ts\"",
     "build": "tsc && tsc-alias",
+    "start": "node dist/server.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -19,7 +20,7 @@
     "docker:run": "docker run -p 3001:3001 captchamaster-api",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "start": "pm2 start ecosystem.config.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop captchamaster-api",
     "restart": "pm2 restart captchamaster-api",
     "logs": "pm2 logs captchamaster-api",

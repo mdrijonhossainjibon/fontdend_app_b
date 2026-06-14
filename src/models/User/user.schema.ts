@@ -23,13 +23,15 @@ export const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: true,
+      required: function(this: { oauthProvider?: string }) {
+        return !this.oauthProvider;
+      },
       minlength: 8,
       select: false,
     },
     role: {
       type: String,
-      enum: ['user', 'solver', 'reseller', 'admin', 'superadmin'],
+      enum: ['user', 'reseller', 'admin', 'superadmin'],
       default: 'user',
       index: true,
     },
