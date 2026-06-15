@@ -59,3 +59,34 @@ export const listResellers = asyncHandler(async (_req: Request, res: Response) =
 
   sendSuccess(res, { resellers: data });
 });
+
+// ─────────────────────────────────────────────────────────────
+// Delete a coupon by ID
+// ─────────────────────────────────────────────────────────────
+export const deleteCoupon = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const { id } = req.params;
+  await PromoCode.findByIdAndDelete(id);
+  sendSuccess(res, { message: 'Coupon deleted successfully' });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Create a coupon for a reseller
+// ─────────────────────────────────────────────────────────────
+export const createCoupon = asyncHandler(async (req: Request, res: Response) => {
+  await connectDB();
+  const { resellerId, code, credits, maxUses, discount, type } = req.body;
+
+  const coupon = await PromoCode.create({
+    code: code.toUpperCase(),
+    credits: Number(credits) || 0,
+    maxUses: Number(maxUses) || 1,
+    discount: Number(discount) || 0,
+    type: type || 'fixed',
+    isActive: true,
+    createdBy: resellerId,
+    usedBy: [],
+  });
+
+  sendSuccess(res, { coupon });
+});

@@ -20,6 +20,6 @@ export { list as listHealthStatuses, run as runHealthCheck } from './health-chec
   
 export { list as listRedeemCodes, create as createRedeemCode, update as updateRedeemCode, remove as removeRedeemCode } from './redeem-codes.controller';
 export { listPromoOffers, createPromoOffer, updatePromoOffer, removePromoOffer } from './promo-offers.controller';
-export { listResellers } from './reseller.controller';
+export { listResellers, deleteCoupon, createCoupon } from './reseller.controller';
 
 export { list as listUserPackages, listAll as listAllUserPackages, update as updateUserPackage, remove as removeUserPackage, assignUserPackage } from './user-packages.controller';
