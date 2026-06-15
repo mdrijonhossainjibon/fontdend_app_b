@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { User } from "@/models/User";
+import { ResellerApiKey } from "@/models/ResellerApiKey";
 import { verifyToken } from "@/services/jwt";
 import { ApiError } from "@/utils/ApiError";
 
@@ -12,6 +13,24 @@ export const authMiddleware = async (req: AuthRequest, _res: Response, next: Nex
     const token = req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) return next(ApiError.unauthorized("No token, authorization denied"));
+
+    // Reseller API key auth (rk_live_ prefix)
+    if (token.startsWith('rk_live_')) {
+      const apiKey = await ResellerApiKey.findOne({ key: token, isActive: true });
+      if (!apiKey) return next(ApiError.unauthorized("Invalid or inactive API key"));
+
+      const user = await User.findById(apiKey.resellerId).select("-password");
+      if (!user) return next(ApiError.unauthorized("Reseller user not found"));
+
+      // Update usage
+      await ResellerApiKey.updateOne(
+        { _id: apiKey._id },
+        { $inc: { usageCount: 1 }, lastUsedAt: new Date() }
+      );
+
+      req.user = user;
+      return next();
+    }
 
     const decoded = await verifyToken(token);
     if (!decoded) return next(ApiError.unauthorized("Token is not valid"));
