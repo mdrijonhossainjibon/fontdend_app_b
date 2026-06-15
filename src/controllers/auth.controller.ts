@@ -48,7 +48,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, {
     requiresOtp: false,
     token,
-    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role || 'user' },
+    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role || 'user', avatar: user.avatar },
   });
 });
 
@@ -160,7 +160,7 @@ export const logout = asyncHandler(async (_req: Request, res: Response) => {
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = (req as any).user;
   sendSuccess(res, {
-    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
+    user: { id: user._id, email: user.email, name: user.name, balance: user.balance, role: user.role, avatar: user.avatar, twoFactorEnabled: user.twoFactorEnabled, status: user.status },
   });
 });
 
