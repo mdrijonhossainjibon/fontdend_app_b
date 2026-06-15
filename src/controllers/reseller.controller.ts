@@ -235,7 +235,7 @@ export const purchasePackage = asyncHandler(async (req: Request, res: Response) 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Claim $100 Advance Coupon (requires balance >= $5)
+// Claim $100 Advance Coupon (requires balance >= $5) — adds $100 to wallet
 // ─────────────────────────────────────────────────────────────────────────────
 export const claimCoupon = asyncHandler(async (req: Request, res: Response) => {
   await connectDB();
@@ -247,30 +247,46 @@ export const claimCoupon = asyncHandler(async (req: Request, res: Response) => {
     throw new ApiError(400, 'Minimum $5 balance required to claim coupon');
   }
 
-  // Check if already claimed a coupon in last 30 days
+  // Check for existing active ADV coupon
   const existing = await PromoCode.findOne({
     code: { $regex: `^ADV${userId.toString().slice(-4).toUpperCase()}` },
     isActive: true,
     expiresAt: { $gt: new Date() },
   });
+
+  let couponCode: string;
+
   if (existing) {
-    throw new ApiError(400, 'You already have an active coupon. Use it first before claiming a new one.');
+    // Coupon exists but hasn't been used yet — mark as used and add $100 to balance
+    if (existing.currentUses >= existing.maxUses) {
+      throw new ApiError(400, 'You already have an active coupon. Use it first before claiming a new one.');
+    }
+    couponCode = existing.code;
+    existing.currentUses += 1;
+    await existing.save();
+  } else {
+    // No existing coupon — create a new one
+    couponCode = `ADV${userId.toString().slice(-4).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
+    await PromoCode.create({
+      code: couponCode,
+      type: 'fixed',
+      discount: 100,
+      credits: 100,
+      maxUses: 1,
+      currentUses: 1,
+      isActive: true,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
   }
 
-  const couponCode = `ADV${userId.toString().slice(-4).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
-  await PromoCode.create({
-    code: couponCode,
-    type: 'fixed',
-    discount: 100,
-    credits: 100,
-    maxUses: 1,
-    currentUses: 0,
-    isActive: true,
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
+  // Add $100 directly to user balance
+  user.balance += 100;
+  await user.save();
 
   sendSuccess(res, {
-    coupon: { code: couponCode, amount: 100, message: '$100 advance coupon code generated' },
+    coupon: { code: couponCode, amount: 100, message: '$100 advance coupon applied' },
+    balance: user.balance,
+    message: '$100 added to your wallet successfully!',
   });
 });
 

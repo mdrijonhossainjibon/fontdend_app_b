@@ -4,8 +4,8 @@ import { IPromoCode } from './promoCode.types'
 export const PromoCodeSchema = new Schema<IPromoCode>(
   {
     code: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    type: { type: String, enum: ['percentage', 'fixed'], required: true },
-    discount: { type: Number, required: true, min: 0 },
+    type: { type: String, enum: ['percentage', 'fixed'] },
+    discount: { type: Number, min: 0 },
     maxUses: { type: Number, default: 1, min: 1 },
     usedCount: { type: Number, default: 0, min: 0 },
     currentUses: { type: Number, default: 0, min: 0 },
